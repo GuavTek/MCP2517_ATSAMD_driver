@@ -355,6 +355,15 @@ void MCP2517_C::FIFO_User_Address(uint8_t fifoNum){
 	Receive_Buffer((ADDR_E) addr, 2);
 }
 
+// Formats the ID field
+uint32_t MCP2517_C::GetID(uint16_t SID, uint32_t EID){
+	uint32_t temp = 0;
+	temp = SID & 0x07ff;
+	temp |= EID << 11;
+	temp |= (SID >> 11) << 29;
+	return temp;
+}
+
 // Attempts to start a message transfer
 uint8_t MCP2517_C::Transmit_Message(CAN_Tx_msg_t* data, uint8_t fifoNum){
 	if (msgState == Msg_Idle){

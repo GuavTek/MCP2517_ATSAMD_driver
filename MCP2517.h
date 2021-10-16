@@ -320,6 +320,7 @@ class MCP2517_C : SPI_C {
 		void Reconfigure_Filters(uint32_t mask);
 		inline void Set_Rx_Callback(void (*cb)(CAN_Rx_msg_t*)){ Rx_Callback = cb; }
 		uint8_t Transmit_Message(CAN_Tx_msg_t* msg, uint8_t fifoNum);
+		uint32_t GetID(uint16_t SID, uint32_t EID);
 		void State_Machine();
 		inline void Handler();
 		inline uint8_t Get_DLC(uint8_t dataLength);
