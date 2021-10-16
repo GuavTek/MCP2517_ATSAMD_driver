@@ -133,6 +133,9 @@ void MCP2517_C::Init(const CAN_Config_t canConfig, const spi_config_t spiConfig)
 			.powersave = false
 		};
 		port_pin_set_config(interruptPin, &intCon);
+		useInterrupt = true;
+	} else {
+		useInterrupt = false;
 	}
 	
 	
@@ -441,7 +444,7 @@ void MCP2517_C::Check_Rx_RTC(){
 WEAK void MCP2517_C::State_Machine(){
 	switch(msgState){
 		case Msg_Idle:
-		if (interruptPin < 64){
+		if (useInterrupt){
 			Check_Rx_Int();
 		} else {
 			Check_Rx_RTC();
