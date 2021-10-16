@@ -381,9 +381,9 @@ void MCP2517_C::Send_Message_Object(uint16_t addr){
 	msgBuff[1] = addr & 0xff;
 	
 	msgBuff[2] = currentMsg.id;
-	//msgBuff[3] = ((CANID >> 8) & 0b0011) | (!broadcasting ? (1 << 2) : 0);
-	//msgBuff[4] = 0;
-	//msgBuff[5] = 0;
+	msgBuff[3] = currentMsg.id >> 8;
+	msgBuff[4] = currentMsg.id >> 16;
+	msgBuff[5] = currentMsg.id >> 24;
 	
 	uint8_t temp = 0;
 	temp |= currentMsg.dataLengthCode;
