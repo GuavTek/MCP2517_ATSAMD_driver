@@ -497,11 +497,11 @@ WEAK void MCP2517_C::State_Machine(){
 			CAN_Rx_msg_t tempMsg;
 			
 			tempMsg.id = buffer[2] | (buffer[3] << 8) | (buffer[4] << 16) | (buffer[5] << 24);
-			tempMsg.dataLengthCode = buffer[6] & 0x07;
+			tempMsg.dataLengthCode = buffer[6] & 0x0f;
 			tempMsg.extendedID = (buffer[6] & 0x10) ? 1 : 0;
 			tempMsg.requestRemote = (buffer[6] & 0x20) ? 1 : 0;
 			tempMsg.bitrateSwitch = (buffer[6] & 0x40) ? 1 : 0;
-			tempMsg.canFDFrame = (buffer[6] & 0x08) ? 1 : 0;
+			tempMsg.canFDFrame = (buffer[6] & 0x80) ? 1 : 0;
 			tempMsg.errorStatus = (buffer[7] & 0x01) ? 1 : 0;
 			tempMsg.filterHit = buffer[7] >> 3;
 			
