@@ -519,6 +519,7 @@ inline void MCP2517_C::Handler(){
 	}
 	if (com->SPI.INTFLAG.bit.DRE && com->SPI.INTENSET.bit.DRE) {
 		// Data register empty
+		com->SPI.INTFLAG.reg = SERCOM_SPI_INTENSET_TXC;		// Clear flag
 		if (currentState == Tx) {
 			com->SPI.DATA.reg = msgBuff[txIndex];
 		} else {
@@ -538,7 +539,6 @@ inline void MCP2517_C::Handler(){
 			com->SPI.INTENCLR.reg = SERCOM_SPI_INTENCLR_DRE;
 			if (currentState == Tx) {
 				com->SPI.INTENSET.reg = SERCOM_SPI_INTENSET_TXC;	// Wait for transmission complete
-				com->SPI.INTFLAG.reg = SERCOM_SPI_INTENSET_TXC;		// Clear flag
 			}
 		}
 	}
