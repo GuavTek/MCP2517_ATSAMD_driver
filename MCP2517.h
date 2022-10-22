@@ -325,6 +325,7 @@ class MCP2517_C : SPI_C {
 		inline void Handler();
 		inline uint8_t Get_DLC(uint8_t dataLength);
 		inline uint8_t Get_Data_Length(uint8_t DLC);
+		inline uint8_t Ready();
 		using SPI_C::SPI_C;
 	protected:
 		void Reset();
@@ -355,6 +356,10 @@ class MCP2517_C : SPI_C {
 			Msg_Rx_Flags, Msg_FIFO_Int, Msg_Status, Msg_Rx_Addr, Msg_Rx_Data, Msg_Rx_FIFO,
 			Msg_Tx_Addr, Msg_Tx_Data, Msg_Tx_FIFO} msgState;
 };
+
+inline uint8_t MCP2517_C::Ready(){
+	return (msgState == Msg_Idle);
+}
 
 inline void MCP2517_C::Filter_Init(CAN_Filter_t* setting, uint8_t filterNum){
 	// Set mask
