@@ -1,4 +1,5 @@
-# MCP2517_ATSAMD21
- MCP2517 driver for ATSAMD21 MCUs
+# MCP2517
+ MCP2517 driver for MCUs
 
-Currently needs the ASF framework to work
+Currently supports these MCUs:
+- ATSAMD21 family (Currently needs the ASF framework to work)
