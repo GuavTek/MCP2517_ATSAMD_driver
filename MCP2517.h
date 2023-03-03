@@ -9,7 +9,8 @@
 #ifndef MCP2517_H_
 #define MCP2517_H_
 
-#include "SPI.h"
+#include <stdint.h>
+#include "communication_base.h"
 
 enum class MCP2517_INSTR_E {
 	Reset			= 0b0000,
@@ -128,9 +129,7 @@ enum class CAN_MODE_E {
 };
 
 struct CAN_Config_t {
-	enum {	CAN_Rx_Interrupt,
-			CAN_Rx_RTC } rxMethod = CAN_Rx_Interrupt;
-	uint8_t interruptPin = 0;
+	uint8_t comSlaveNum = 0;
 	enum {	clkOutDiv1 = 0b00, 
 			clkOutDiv2 = 0b01, 
 			clkOutDiv4 = 0b10, 
@@ -314,20 +313,22 @@ extern CAN_FIFO_t CAN_FIFO31;
 
 extern CAN_FIFO_t* FIFO_Settings[32];
 
-class MCP2517_C : SPI_C {
+class MCP2517_C : public com_driver_c {
 	public:
-		void Init(const CAN_Config_t canConfig, const spi_config_t spiConfig);
+		void Init(const CAN_Config_t canConfig);
 		void Reconfigure_Filters(uint32_t mask);
-		inline void Set_Rx_Callback(void (*cb)(CAN_Rx_msg_t*)){ Rx_Callback = cb; }
+		inline void Set_Rx_Callback(void (*cb)(CAN_Rx_msg_t*)){ Rx_Callback = cb; }			// Set function to send the received data to
+		uint8_t Check_Rx();	// Try reading from MCP2517, return 0 if busy. Suggest triggering this via an RTC or checking the intpin
 		uint8_t Transmit_Message(CAN_Tx_msg_t* msg, uint8_t fifoNum);
 		uint32_t GetID(uint16_t SID, uint32_t EID);
-		void State_Machine();
-		inline void Handler();
 		inline uint8_t Get_DLC(uint8_t dataLength);
 		inline uint8_t Get_Data_Length(uint8_t DLC);
 		inline uint8_t Ready();
-		using SPI_C::SPI_C;
+		void com_cb();
+		MCP2517_C(communication_base_c* const comInstance) : com(comInstance){};
 	protected:
+		communication_base_c* com;
+		uint8_t comSlaveNum;
 		void Reset();
 		inline void Filter_Init(CAN_Filter_t* setting, uint8_t filterNum);
 		inline void FIFO_Init(CAN_FIFO_t* setting, uint8_t fifoNum);
@@ -336,8 +337,7 @@ class MCP2517_C : SPI_C {
 		uint8_t Send_Buffer(enum ADDR_E addr, char* data, uint8_t length);
 		uint8_t Receive_Buffer(enum ADDR_E addr, uint8_t length);
 		void (*Rx_Callback)(CAN_Rx_msg_t*);
-		void Check_Rx_Int();
-		void Check_Rx_RTC();
+		uint8_t (*Check_Rx_Callback)(void);
 		void Check_Int_Reg();
 		inline uint16_t Get_FIFOCON_Addr(uint8_t fifoNum);
 		inline uint16_t Get_FIFOSTA_Addr(uint8_t fifoNum);
@@ -347,11 +347,10 @@ class MCP2517_C : SPI_C {
 		void FIFO_User_Address(uint8_t fifoNum);
 		void Check_FIFO_Status(uint8_t fifoNum);
 		void Check_Rx_Flags_Reg();
-		bool useInterrupt;
-		uint8_t interruptPin;
 		uint32_t filterTimestamp;
 		uint8_t currentFifo;
-		CAN_Tx_msg_t currentMsg;
+		char msgBuff[32];		// TODO: maybe make array size changeable
+		uint8_t payloadLength;
 		enum {Msg_Idle = 0,
 			Msg_Rx_Flags, Msg_FIFO_Int, Msg_Status, Msg_Rx_Addr, Msg_Rx_Data, Msg_Rx_FIFO,
 			Msg_Tx_Addr, Msg_Tx_Data, Msg_Tx_FIFO} msgState;
@@ -370,7 +369,7 @@ inline void MCP2517_C::Filter_Init(CAN_Filter_t* setting, uint8_t filterNum){
 	
 	// Set ID
 	temp = 0;
-	temp |= (setting->extendedID ? 1 : 0) << 30;
+	temp |= (setting->extendedID ? 1 : 0) << 30;	// TODO: Can be streamlined
 	temp |= setting->ID << 0;					// set ID (SID11, EID, SID10-0)
 	Write_Word_Blocking(ADDR_E(uint16_t(ADDR_E::C1FLTOBJ0) + 8 * filterNum), temp);
 	
@@ -503,7 +502,7 @@ inline uint8_t MCP2517_C::Get_Data_Length(uint8_t DLC){
 }
 
 inline uint16_t MCP2517_C::Get_FIFOCON_Addr(uint8_t fifoNum){
-	return ((uint16_t) ADDR_E::C1TXQCON + (0xc * fifoNum));
+	return ((uint16_t) ADDR_E::C1TXQCON + (0xc * fifoNum) + 1);
 }
 
 inline uint16_t MCP2517_C::Get_FIFOSTA_Addr(uint8_t fifoNum){
@@ -514,7 +513,9 @@ inline uint16_t MCP2517_C::Get_FIFOUA_Addr(uint8_t fifoNum){
 	return ((uint16_t) ADDR_E::C1TXQUA + (0xc * fifoNum));
 }
 
+// TODO: convert
 // Interrupt handler for CAN controller
+/*
 inline void MCP2517_C::Handler(){
 	if (com->SPI.INTFLAG.bit.TXC && com->SPI.INTENSET.bit.TXC) {
 		com->SPI.INTENCLR.reg = SERCOM_SPI_INTENCLR_TXC;
@@ -560,5 +561,5 @@ inline void MCP2517_C::Handler(){
 	}
 	
 }
-
+//*/
 #endif /* MCP2517_H_ */

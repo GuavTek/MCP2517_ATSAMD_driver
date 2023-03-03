@@ -6,58 +6,70 @@
  */ 
 
 
-#ifndef SPI_H_
-#define SPI_H_
+#ifndef SPI_SAMD_H_
+#define SPI_SAMD_H_
 
 #include <sam.h>
 #include "conf_board.h"
 #include <port.h>
 #include <interrupt.h>
+#include "communication_base.h"
 
 struct spi_config_t {
 	uint8_t sercomNum;
 	uint8_t dipoVal;
 	uint8_t dopoVal;
 	uint64_t speed;
-	uint8_t pin_cs;
 	uint32_t pinmux_mosi;
 	uint32_t pinmux_miso;
 	uint32_t pinmux_sck;
+	uint8_t num_cs;
+	uint8_t pin_cs[];
 };
 
-class SPI_C
+class SPI_SAMD_C : public communication_base_c
 {
 	public:
-		Sercom* const com;
-		inline void Select_Slave(const bool state) { port_pin_set_output_level(ssPin, !state); }
-		inline uint8_t Get_Status(){ return currentState; }
-		uint8_t Read_Buffer(char* buff);
-		uint8_t Send(char* buff, uint8_t length);
-		uint8_t Send(uint8_t length);
-		void Transfer_Blocking(char* buff, uint8_t length);
-		uint8_t Receive(uint8_t length);
+		virtual inline void Set_Slave_Callback(uint8_t slaveNum, com_driver_c* cb);
+		virtual uint8_t Read_Buffer(char* buff);
+		virtual uint8_t Transfer(char* buff, uint8_t length, com_state_e state);
+		virtual inline void Select_Slave(int slaveNum);
 		void Init(const spi_config_t config);
 		inline void Handler();
-		SPI_C(Sercom* const SercomInstance) : com(SercomInstance){};
-			
+		SPI_SAMD_C(Sercom* const SercomInstance) : com(SercomInstance){};
 	protected:
-		char msgBuff[30];
+		Sercom* const com;
+		char msgBuff[32];
+		uint8_t lastSlave;
 		uint8_t msgLength;
 		uint8_t rxIndex;
 		uint8_t txIndex;
-		enum {Idle = 0, Rx, Tx, Rx_Ready} currentState;
-		uint8_t ssPin;
+		uint8_t* csPin;
+		com_driver_c** slaveCallbacks;
 };
 
+inline void SPI_SAMD_C::Set_Slave_Callback(uint8_t slaveNum, com_driver_c* cb){
+	slaveCallbacks[slaveNum] = cb;
+}
+
+inline void SPI_SAMD_C::Select_Slave(int slaveNum) {
+	port_pin_set_output_level(csPin[lastSlave], 1);
+	if (slaveNum >= 0){
+		port_pin_set_output_level(csPin[slaveNum], 0);
+		lastSlave = slaveNum;
+	}
+}
+
 // SPI interrupt handler
-inline void SPI_C::Handler(){
+inline void SPI_SAMD_C::Handler(){
 	if (com->SPI.INTFLAG.bit.TXC && com->SPI.INTENSET.bit.TXC) {
 		com->SPI.INTENCLR.reg = SERCOM_SPI_INTENCLR_TXC;
 		currentState = Idle;	// Transmission end
+		slaveCallbacks[lastSlave]->com_cb();
 	}
 	if (com->SPI.INTFLAG.bit.DRE && com->SPI.INTENSET.bit.DRE) {
 		// Data register empty
-		if (currentState == Tx) {
+		if ((currentState == Tx) || (currentState == RxTx)) {
 			com->SPI.DATA.reg = msgBuff[txIndex];
 		} else if(currentState == Rx) {
 			com->SPI.DATA.reg = 0;		// Send dummy byte
@@ -74,10 +86,12 @@ inline void SPI_C::Handler(){
 		}
 	}
 	if (com->SPI.INTFLAG.bit.RXC && com->SPI.INTENSET.bit.RXC) {
-		if (currentState == Rx) {
+		if ((currentState == Rx) || (currentState == RxTx)) {
 			msgBuff[rxIndex++] = com->SPI.DATA.reg;
 			if (rxIndex >= msgLength) {
 				currentState = Rx_Ready;
+				slaveCallbacks[lastSlave]->com_cb();
+				//com->SPI.INTENCLR.reg = SERCOM_SPI_INTENCLR_RXC;
 			}
 		} else {
 			volatile uint8_t dumdum = com->SPI.DATA.reg;
@@ -87,4 +101,4 @@ inline void SPI_C::Handler(){
 	//NVIC_ClearPendingIRQ(SERCOM5_IRQn);
 }
 
-#endif /* SPI_H_ */
+#endif /* SPI_SAMD_H_ */

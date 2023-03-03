@@ -5,9 +5,9 @@
  *  Author: GuavTek
  */ 
 
-#include "SPI.h"
+#include "SPI_SAMD.h"
 
-void SPI_C::Init(const spi_config_t config){
+void SPI_SAMD_C::Init(const spi_config_t config){
 	//Setting the Software Reset bit to 1
 	com->SPI.CTRLA.bit.SWRST = 1;
 	while(com->SPI.CTRLA.bit.SWRST || com->SPI.SYNCBUSY.bit.SWRST);
@@ -19,15 +19,18 @@ void SPI_C::Init(const spi_config_t config){
 	GCLK->CLKCTRL.reg = GCLK_CLKCTRL_CLKEN | GCLK_CLKCTRL_GEN_GCLK0 | ((GCLK_CLKCTRL_ID_SERCOM0_CORE_Val + config.sercomNum) << GCLK_CLKCTRL_ID_Pos);
 
 	// Configure chip select pin
-	
 	struct port_config chipSel = {
 		.direction = PORT_PIN_DIR_OUTPUT,
 		.input_pull = PORT_PIN_PULL_NONE,
 		.powersave = false
 	};
-	port_pin_set_config(config.pin_cs, &chipSel);
-	port_pin_set_output_level(config.pin_cs, true);
-	ssPin = config.pin_cs;
+	csPin = new uint8_t[config.num_cs];
+	slaveCallbacks = (com_driver_c**) malloc(4*config.num_cs);	// Allocate memory space for function pointers
+	for (uint8_t i = 0; i < config.num_cs; i++)	{
+		port_pin_set_config(config.pin_cs[i], &chipSel);
+		port_pin_set_output_level(config.pin_cs[i], true);
+		csPin[i] = config.pin_cs[i];
+	}
 	
 	// Select peripheral pin function
 	pin_set_peripheral_function(config.pinmux_miso);
@@ -62,7 +65,7 @@ void SPI_C::Init(const spi_config_t config){
 
 // Reads the internal buffer of the object
 // Clears Rx_Ready state
-uint8_t SPI_C::Read_Buffer(char* buff){
+uint8_t SPI_SAMD_C::Read_Buffer(char* buff){
 	for (uint8_t i = 0; i < msgLength; i++) {
 		buff[i] = msgBuff[i];
 	}
@@ -74,59 +77,20 @@ uint8_t SPI_C::Read_Buffer(char* buff){
 	return rxIndex;
 }
 
-// Save to msgbuff then send
-uint8_t SPI_C::Send(char* buff, uint8_t length){
-	if (currentState == Idle) {
-		currentState = Tx;
+uint8_t SPI_SAMD_C::Transfer(char* buff, uint8_t length, com_state_e state){
+	if (currentState == Idle){
+		currentState = state;
 		msgLength = length;
 		txIndex = 0;
-		for (uint8_t i = 0; i < length; i++) {
-			msgBuff[i] = buff[i];
+		rxIndex = 0;
+		if ((state == Tx) || (state == RxTx)){
+			for (uint8_t i = 0; i < length; i++) {
+				msgBuff[i] = buff[i];
+			}
 		}
 		com->SPI.INTENSET.reg = SERCOM_SPI_INTENSET_RXC | SERCOM_SPI_INTENSET_DRE;
 		return 1;
 	}
-	
 	return 0;
 }
 
-// Send message already saved in msgbuff
-uint8_t SPI_C::Send(uint8_t length){
-	if (currentState == Idle) {
-		currentState = Tx;
-		msgLength = length;
-		txIndex = 0;
-		com->SPI.INTENSET.reg = SERCOM_SPI_INTENSET_RXC | SERCOM_SPI_INTENSET_DRE;
-		return 1;
-	}
-	
-	return 0;
-}
-
-void SPI_C::Transfer_Blocking(char* buff, uint8_t length){
-	for (uint8_t i = 0; i < length; i++) {
-		// Wait for data register to be empty
-		while (com->SPI.INTFLAG.bit.DRE == 0);
-		
-		// Send byte
-		com->SPI.DATA.reg = buff[i];
-		
-		// Wait for transfer to complete
-		while(com->SPI.INTFLAG.bit.RXC == 0);
-		
-		buff[i] = com->SPI.DATA.reg;
-	}
-}
-
-uint8_t SPI_C::Receive(uint8_t length){
-	if (currentState == Idle) {
-		currentState = Rx;
-		msgLength = length;
-		rxIndex = 0;
-		txIndex = 0;
-		com->SPI.INTENSET.reg = SERCOM_SPI_INTENSET_RXC | SERCOM_SPI_INTENSET_DRE;
-		return 1;
-	}
-	
-	return 0;
-}

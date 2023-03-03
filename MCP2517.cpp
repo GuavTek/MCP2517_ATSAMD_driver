@@ -120,24 +120,14 @@ CAN_FIFO_t* FIFO_Settings[32] = {
 };
 
 // Initializes the MCP2517 chip
-void MCP2517_C::Init(const CAN_Config_t canConfig, const spi_config_t spiConfig){
-	SPI_C::Init(spiConfig);
+void MCP2517_C::Init(const CAN_Config_t canConfig){
+	// Connect to com interface
+	comSlaveNum = canConfig.comSlaveNum;
+	com->Set_Slave_Callback(comSlaveNum, this);
+	
+	msgState = MCP2517_C::Msg_Idle;
 	
 	Reset();
-	
-	interruptPin = canConfig.interruptPin;
-	if (canConfig.rxMethod == CAN_Config_t::CAN_Rx_Interrupt){
-		struct port_config intCon = {
-			.direction = PORT_PIN_DIR_INPUT,
-			.input_pull = PORT_PIN_PULL_NONE,
-			.powersave = false
-		};
-		port_pin_set_config(interruptPin, &intCon);
-		useInterrupt = true;
-	} else {
-		useInterrupt = false;
-	}
-	
 	
 	uint32_t temp;
 	
@@ -232,7 +222,7 @@ void MCP2517_C::Init(const CAN_Config_t canConfig, const spi_config_t spiConfig)
 
 void MCP2517_C::Reconfigure_Filters(uint32_t mask){
 	// Disable interrupts
-	system_interrupt_enter_critical_section();
+	//system_interrupt_enter_critical_section();
 	
 	// Set config mode
 	uint32_t temp;
@@ -263,36 +253,37 @@ void MCP2517_C::Reconfigure_Filters(uint32_t mask){
 	} while ((temp & (0b111 << 21)) != (lastMode & (0b111 << 21)));
 	
 	// Re-enable interrupts
-	system_interrupt_leave_critical_section();
+	//system_interrupt_leave_critical_section();
 }
 
 // Reset the CAN controller
 void MCP2517_C::Reset(){
 	char temp[4] = {0,0,0,0};
-	while(Get_Status() != Idle);
-	Select_Slave(true);
-	Transfer_Blocking(temp, 4);
-	while(Get_Status() != Idle);
-	Select_Slave(false);
+	while(com->Get_Status() != Idle);
+	com->Select_Slave(comSlaveNum);
+	com->Transfer(temp, 4, Tx);
+	while(com->Get_Status() != Idle);
+	com->Select_Slave(-1);
 }
 
 // Sends a number of bytes to the specified address of the MCP2517
 uint8_t MCP2517_C::Send_Buffer(enum ADDR_E addr, char* data, uint8_t length){
-	if (Get_Status() == Idle){
+	if (com->Get_Status() == Idle){
+		char tempBuff[length+2];
 		// Write buffer
-		msgBuff[0] = ((char) MCP2517_INSTR_E::Write << 4) | ((uint16_t) addr >> 8);
-		msgBuff[1] = (uint8_t) addr & 0xff;
+		tempBuff[0] = ((char) MCP2517_INSTR_E::Write << 4) | ((uint16_t) addr >> 8);
+		tempBuff[1] = (uint8_t) addr & 0xff;
 		
 		for (uint8_t i = 0; i < length; i++){
-			msgBuff[i+2] = data[i];
+			tempBuff[i+2] = data[i];
 		}
 		
-		Select_Slave(true);
-		Send(length + 2);
+		com->Select_Slave(comSlaveNum);
+		com->Transfer(tempBuff, length+2, Tx);
 		
 		// Return success
 		return 1;
-		} else {
+	} else {
 		// Return not success
 		return 0;
 	}
@@ -300,21 +291,22 @@ uint8_t MCP2517_C::Send_Buffer(enum ADDR_E addr, char* data, uint8_t length){
 
 // Reads a number of bytes from the specified address of the MCP2517
 uint8_t MCP2517_C::Receive_Buffer(enum ADDR_E addr, uint8_t length){
-	if (Get_Status() == Idle){
+	if (com->Get_Status() == Idle){
+		char tempBuff[length+2];
 		// Write buffer
-		msgBuff[0] = ((char) MCP2517_INSTR_E::Read << 4) | ((uint16_t) addr >> 8);
-		msgBuff[1] = (uint8_t) addr & 0xff;
+		tempBuff[0] = ((char) MCP2517_INSTR_E::Read << 4) | ((uint16_t) addr >> 8);
+		tempBuff[1] = (uint8_t) addr & 0xff;
 		
-		Select_Slave(true);
-		Receive(length + 2);
+		com->Select_Slave(comSlaveNum);
+		com->Transfer(tempBuff, length+2, RxTx);
 		
 		return 1;
-		} else {
+	} else {
 		return 0;
 	}
 };
 
-// Write a word to CAN controller without interrupts.
+// Write a word to CAN controller and block execution until it is done
 void MCP2517_C::Write_Word_Blocking(enum ADDR_E addr, uint32_t data){
 	char temp[6];
 	temp[0] = ((char) MCP2517_INSTR_E::Write << 4) | ((uint16_t) addr >> 8);
@@ -323,26 +315,32 @@ void MCP2517_C::Write_Word_Blocking(enum ADDR_E addr, uint32_t data){
 	temp[3] = (data >> 8) & 0xff;
 	temp[4] = (data >> 16) & 0xff;
 	temp[5] = (data >> 24) & 0xff;
-	while(Get_Status() != Idle);
-	Select_Slave(true);
-	Transfer_Blocking(temp, 6);
-	Select_Slave(false);
+	while(com->Get_Status() != Idle);
+	com->Select_Slave(comSlaveNum);
+	com->Transfer(temp, 6, Tx);
+	while(com->Get_Status() != Idle);
+	com->Select_Slave(-1);
 }
 
 uint32_t MCP2517_C::Receive_Word_Blocking(enum ADDR_E addr){
-	char temp[10];
+	char temp[6];
 	temp[0] = ((char) MCP2517_INSTR_E::Read << 4) | ((uint16_t) addr >> 8);
 	temp[1] = (uint8_t) addr & 0xff;
-	while(Get_Status() != Idle);
-	Select_Slave(true);
-	Transfer_Blocking(temp, 10);
-	Select_Slave(false);
+	for (uint8_t i = 2; i < 6; i++){
+		temp[i] = 0;
+	}
+	while(com->Get_Status() != Idle);
+	com->Select_Slave(comSlaveNum);
+	com->Transfer(temp, 6, RxTx);
+	while(com->Get_Status() != Rx_Ready);
+	com->Read_Buffer(temp);
+	com->Select_Slave(-1);
 	uint32_t result = temp[2] | (temp[3] << 8) | (temp[4] << 16) | (temp[5] << 24);
 	return result;
 }
 
 void MCP2517_C::FIFO_Increment(uint8_t fifoNum, uint8_t txRequest){
-	uint16_t addr = Get_FIFOCON_Addr(fifoNum) + 1;
+	uint16_t addr = Get_FIFOCON_Addr(fifoNum);
 	
 	char data = 1 | (txRequest << 1);
 	
@@ -351,7 +349,6 @@ void MCP2517_C::FIFO_Increment(uint8_t fifoNum, uint8_t txRequest){
 
 void MCP2517_C::FIFO_User_Address(uint8_t fifoNum){
 	uint16_t addr = Get_FIFOUA_Addr(fifoNum);
-	
 	Receive_Buffer((ADDR_E) addr, 2);
 }
 
@@ -367,12 +364,31 @@ uint32_t MCP2517_C::GetID(uint16_t SID, uint32_t EID){
 // Attempts to start a message transfer
 uint8_t MCP2517_C::Transmit_Message(CAN_Tx_msg_t* data, uint8_t fifoNum){
 	if (msgState == Msg_Idle){
-		uint8_t length = Get_Data_Length(data->dataLengthCode);
-		for (uint8_t i = 0; i < length; i++){
+		payloadLength = Get_Data_Length(data->dataLengthCode);
+		msgBuff[2] = data->id;
+		msgBuff[3] = data->id >> 8;
+		msgBuff[4] = data->id >> 16;
+		msgBuff[5] = data->id >> 24;
+		
+		uint8_t temp = 0;
+		temp |= data->dataLengthCode;
+		temp |= (data->extendedID ? 1 : 0) << 4;
+		temp |= (data->requestRemote ? 1 : 0) << 5;
+		temp |= (data->bitrateSwitch ? 1 : 0) << 6;
+		temp |= (data->canFDFrame ? 1 : 0) << 7;
+		msgBuff[6] = temp;
+		
+		temp = 0;
+		temp |= (data->errorIndicator ? 1 : 0);
+		temp |= data->sequence << 1;
+		msgBuff[7] = temp;
+		msgBuff[8] = 0;
+		msgBuff[9] = 0;
+		
+		for (uint8_t i = 0; i < payloadLength; i++){
 			msgBuff[i+10] = data->payload[i];
 		}
 		
-		currentMsg = *data;
 		currentFifo = fifoNum;
 		
 		msgState = Msg_Tx_Addr;
@@ -389,36 +405,13 @@ void MCP2517_C::Send_Message_Object(uint16_t addr){
 	msgBuff[0] = ((char) MCP2517_INSTR_E::Write << 4) | ((uint16_t) addr >> 8);
 	msgBuff[1] = addr & 0xff;
 	
-	msgBuff[2] = currentMsg.id;
-	msgBuff[3] = currentMsg.id >> 8;
-	msgBuff[4] = currentMsg.id >> 16;
-	msgBuff[5] = currentMsg.id >> 24;
-	
-	uint8_t temp = 0;
-	temp |= currentMsg.dataLengthCode;
-	temp |= (currentMsg.extendedID ? 1 : 0) << 4;
-	temp |= (currentMsg.requestRemote ? 1 : 0) << 5;
-	temp |= (currentMsg.bitrateSwitch ? 1 : 0) << 6;
-	temp |= (currentMsg.canFDFrame ? 1 : 0) << 7;
-	msgBuff[6] = temp;
-	
-	temp = 0;
-	temp |= (currentMsg.errorIndicator ? 1 : 0);
-	temp |= currentMsg.sequence << 1;
-	msgBuff[7] = temp;
-	msgBuff[8] = 0;
-	msgBuff[9] = 0;
-	
-	uint8_t length = Get_Data_Length(currentMsg.dataLengthCode) + 10;
-	
-	Select_Slave(true);
-	Send(length);
+	com->Select_Slave(comSlaveNum);
+	com->Transfer(msgBuff, payloadLength + 10, Tx);
 }
 
 // Request status info of FIFO
 void MCP2517_C::Check_FIFO_Status(uint8_t fifoNum){
 	uint16_t addr = Get_FIFOSTA_Addr(fifoNum);
-	
 	msgState = Msg_FIFO_Int;
 	Receive_Buffer((ADDR_E) addr, 1);
 }
@@ -433,9 +426,10 @@ void MCP2517_C::Check_Rx_Flags_Reg(){
 	Receive_Buffer(ADDR_E::C1RXIF, 4);
 }
 
+/*
 // Checks MCP2517 interrupt pin
 void MCP2517_C::Check_Rx_Int(){
-	if (!port_pin_get_input_level(interruptPin)){
+	if (!port_pin_get_input_level(interruptPin)){	// TODO: decouple MCU
 		msgState = Msg_Rx_Addr;
 		Check_Rx_Flags_Reg();
 	}
@@ -448,21 +442,25 @@ void MCP2517_C::Check_Rx_RTC(){
 		count = RTC->MODE0.COUNT.reg;
 		Check_Rx_Flags_Reg();
 	}
+} //*/
+
+uint8_t MCP2517_C::Check_Rx(){
+	if (msgState == MCP2517_C::Msg_Idle){
+		// Start checking the Rx flags
+		Check_Rx_Flags_Reg();
+		return 1;
+	}
+	return 0;
 }
 
-WEAK void MCP2517_C::State_Machine(){
+WEAK void MCP2517_C::com_cb(){
 	switch(msgState){
-		case Msg_Idle:
-		if (useInterrupt){
-			Check_Rx_Int();
-		} else {
-			Check_Rx_RTC();
-		}
-		break;
 		case Msg_Rx_Flags:
-		if (Get_Status() == Rx_Ready){
+		if (com->Get_Status() == Rx_Ready){
+			// Rx flags were fetched, check if data is waiting
+			com->Select_Slave(-1);
 			char temp[6];
-			Read_Buffer(temp);
+			com->Read_Buffer(temp);
 			uint32_t intFlags = temp[2] | (temp[3] << 8) | (temp[4] << 16) | (temp[5] << 24);
 			if (intFlags == 0){
 				// No message
@@ -473,6 +471,7 @@ WEAK void MCP2517_C::State_Machine(){
 					if (intFlags & (1 << i)){
 						msgState = Msg_Rx_Addr;
 						FIFO_User_Address(i);
+						currentFifo = i;	// TODO: verify
 						break;
 					}
 				}
@@ -480,10 +479,12 @@ WEAK void MCP2517_C::State_Machine(){
 		}
 		break;
 		case Msg_Rx_Addr:
-		if (Get_Status() == Rx_Ready){
+		if (com->Get_Status() == Rx_Ready){
+			// Rx RAM address fetched, start fetching data
+			com->Select_Slave(-1);
 			msgState = Msg_Rx_Data;
 			char temp[4];
-			Read_Buffer(temp);
+			com->Read_Buffer(temp);
 			
 			uint16_t addr = (temp[3] << 8) | temp[2];
 			addr += (uint16_t) ADDR_E::RAM_START;
@@ -491,9 +492,11 @@ WEAK void MCP2517_C::State_Machine(){
 		}
 		break;
 		case Msg_Rx_Data:
-		if (Get_Status() == Rx_Ready){
+		if (com->Get_Status() == Rx_Ready){
+			// Rx data fetched, increment fifo
+			com->Select_Slave(-1);
 			char buffer[26];
-			Read_Buffer(buffer);
+			com->Read_Buffer(buffer);
 			CAN_Rx_msg_t tempMsg;
 			
 			tempMsg.id = buffer[2] | (buffer[3] << 8) | (buffer[4] << 16) | (buffer[5] << 24);
@@ -514,19 +517,23 @@ WEAK void MCP2517_C::State_Machine(){
 			
 			Rx_Callback(&tempMsg);
 			msgState = Msg_Rx_FIFO;
-			FIFO_Increment(1, 0);
+			FIFO_Increment(currentFifo, 0);
 		}
 		break;
 		case Msg_Rx_FIFO:
-		if (Get_Status() == Idle){
+		if (com->Get_Status() == Idle){
+			// Rx done
+			com->Select_Slave(-1);
 			msgState = Msg_Idle;
 		}
 		break;
 		case Msg_Tx_Addr:
-		if (Get_Status() == Rx_Ready){
+		if (com->Get_Status() == Rx_Ready){
+			// Tx RAM address was fetched, send data
+			com->Select_Slave(-1);
 			msgState = Msg_Tx_Data;
 			char temp[4];
-			Read_Buffer(temp);
+			com->Read_Buffer(temp);
 			
 			uint16_t addr = (temp[3] << 8) | temp[2];
 			addr += (uint16_t) ADDR_E::RAM_START;
@@ -534,13 +541,17 @@ WEAK void MCP2517_C::State_Machine(){
 		}
 		break;
 		case Msg_Tx_Data:
-		if (Get_Status() == Idle){
+		if (com->Get_Status() == Idle){
+			// Tx data was sent to RAM, increment fifo and request data send
+			com->Select_Slave(-1);
 			msgState = Msg_Tx_FIFO;
 			FIFO_Increment(currentFifo, 1);
 		}
 		break;
 		case Msg_Tx_FIFO:
-		if (Get_Status() == Idle){
+		if (com->Get_Status() == Idle){
+			// Tx done
+			com->Select_Slave(-1);
 			msgState = Msg_Idle;
 		}
 		break;
