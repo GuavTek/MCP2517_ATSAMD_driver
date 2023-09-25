@@ -6,7 +6,6 @@
  */ 
 
 #include "MCP2517.h"
-#include "system_interrupt.h"
 
 extern const CAN_Filter_t Unused_Filter = {
 	.enabled = false,
@@ -453,7 +452,7 @@ uint8_t MCP2517_C::Check_Rx(){
 	return 0;
 }
 
-WEAK void MCP2517_C::com_cb(){
+void MCP2517_C::com_cb(){
 	switch(msgState){
 		case Msg_Rx_Flags:
 		if (com->Get_Status() == Rx_Ready){

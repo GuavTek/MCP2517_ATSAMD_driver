@@ -324,7 +324,7 @@ class MCP2517_C : public com_driver_c {
 		inline uint8_t Get_DLC(uint8_t dataLength);
 		inline uint8_t Get_Data_Length(uint8_t DLC);
 		inline uint8_t Ready();
-		void com_cb();
+		void com_cb() __attribute__((weak));
 		MCP2517_C(communication_base_c* const comInstance) : com(comInstance){};
 	protected:
 		communication_base_c* com;
