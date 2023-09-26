@@ -24,7 +24,7 @@ void SPI_SAMD_C::Init(const spi_config_t config){
 		.input_pull = PORT_PIN_PULL_NONE,
 		.powersave = false
 	};
-	csPin = new uint8_t[config.num_cs];
+	csPin = (uint8_t*) malloc(config.num_cs * sizeof(uint8_t));
 	slaveCallbacks = (com_driver_c**) malloc(4*config.num_cs);	// Allocate memory space for function pointers
 	for (uint8_t i = 0; i < config.num_cs; i++)	{
 		port_pin_set_config(config.pin_cs[i], &chipSel);
