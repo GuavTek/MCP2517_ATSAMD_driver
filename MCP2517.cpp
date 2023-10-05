@@ -400,24 +400,6 @@ void MCP2517_C::Check_Rx_Flags_Reg(){
 	Receive_Buffer(ADDR_E::C1RXIF, 4);
 }
 
-/*
-// Checks MCP2517 interrupt pin
-void MCP2517_C::Check_Rx_Int(){
-	if (!port_pin_get_input_level(interruptPin)){	// TODO: decouple MCU
-		msgState = Msg_Rx_Addr;
-		Check_Rx_Flags_Reg();
-	}
-}
-
-// Check MCP2517 interrupt register every RTC tick
-void MCP2517_C::Check_Rx_RTC(){
-	static uint32_t count = 0;
-	if (count < RTC->MODE0.COUNT.reg){
-		count = RTC->MODE0.COUNT.reg;
-		Check_Rx_Flags_Reg();
-	}
-} //*/
-
 uint8_t MCP2517_C::Check_Rx(){
 	if (msgState == MCP2517_C::Msg_Idle){
 		// Start checking the Rx flags
