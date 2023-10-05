@@ -243,80 +243,96 @@ struct CAN_FIFO_t {
 	bool notFullEmptyInterrupt : 1;
 };
 
-extern CAN_Filter_t CAN_FLT0;
-extern CAN_Filter_t CAN_FLT1;
-extern CAN_Filter_t CAN_FLT2;
-extern CAN_Filter_t CAN_FLT3;
-extern CAN_Filter_t CAN_FLT4;
-extern CAN_Filter_t CAN_FLT5;
-extern CAN_Filter_t CAN_FLT6;
-extern CAN_Filter_t CAN_FLT7;
-extern CAN_Filter_t CAN_FLT8;
-extern CAN_Filter_t CAN_FLT9;
-extern CAN_Filter_t CAN_FLT10;
-extern CAN_Filter_t CAN_FLT11;
-extern CAN_Filter_t CAN_FLT12;
-extern CAN_Filter_t CAN_FLT13;
-extern CAN_Filter_t CAN_FLT14;
-extern CAN_Filter_t CAN_FLT15;
-extern CAN_Filter_t CAN_FLT16;
-extern CAN_Filter_t CAN_FLT17;
-extern CAN_Filter_t CAN_FLT18;
-extern CAN_Filter_t CAN_FLT19;
-extern CAN_Filter_t CAN_FLT20;
-extern CAN_Filter_t CAN_FLT21;
-extern CAN_Filter_t CAN_FLT22;
-extern CAN_Filter_t CAN_FLT23;
-extern CAN_Filter_t CAN_FLT24;
-extern CAN_Filter_t CAN_FLT25;
-extern CAN_Filter_t CAN_FLT26;
-extern CAN_Filter_t CAN_FLT27;
-extern CAN_Filter_t CAN_FLT28;
-extern CAN_Filter_t CAN_FLT29;
-extern CAN_Filter_t CAN_FLT30;
-extern CAN_Filter_t CAN_FLT31;
+extern const CAN_Filter_t CAN_FLT0;
+extern const CAN_Filter_t CAN_FLT1;
+extern const CAN_Filter_t CAN_FLT2;
+extern const CAN_Filter_t CAN_FLT3;
+extern const CAN_Filter_t CAN_FLT4;
+extern const CAN_Filter_t CAN_FLT5;
+extern const CAN_Filter_t CAN_FLT6;
+extern const CAN_Filter_t CAN_FLT7;
+extern const CAN_Filter_t CAN_FLT8;
+extern const CAN_Filter_t CAN_FLT9;
+extern const CAN_Filter_t CAN_FLT10;
+extern const CAN_Filter_t CAN_FLT11;
+extern const CAN_Filter_t CAN_FLT12;
+extern const CAN_Filter_t CAN_FLT13;
+extern const CAN_Filter_t CAN_FLT14;
+extern const CAN_Filter_t CAN_FLT15;
+extern const CAN_Filter_t CAN_FLT16;
+extern const CAN_Filter_t CAN_FLT17;
+extern const CAN_Filter_t CAN_FLT18;
+extern const CAN_Filter_t CAN_FLT19;
+extern const CAN_Filter_t CAN_FLT20;
+extern const CAN_Filter_t CAN_FLT21;
+extern const CAN_Filter_t CAN_FLT22;
+extern const CAN_Filter_t CAN_FLT23;
+extern const CAN_Filter_t CAN_FLT24;
+extern const CAN_Filter_t CAN_FLT25;
+extern const CAN_Filter_t CAN_FLT26;
+extern const CAN_Filter_t CAN_FLT27;
+extern const CAN_Filter_t CAN_FLT28;
+extern const CAN_Filter_t CAN_FLT29;
+extern const CAN_Filter_t CAN_FLT30;
+extern const CAN_Filter_t CAN_FLT31;
 
-extern CAN_Filter_t* Filter_Settings[32];
+const CAN_Filter_t* const Filter_Settings[32] = {
+	&CAN_FLT0, &CAN_FLT1, &CAN_FLT2, &CAN_FLT3, &CAN_FLT4,
+	&CAN_FLT5, &CAN_FLT6, &CAN_FLT7, &CAN_FLT8, &CAN_FLT9,
+	&CAN_FLT10, &CAN_FLT11, &CAN_FLT12, &CAN_FLT13, &CAN_FLT14,
+	&CAN_FLT15, &CAN_FLT16, &CAN_FLT17, &CAN_FLT18, &CAN_FLT19,
+	&CAN_FLT20, &CAN_FLT21, &CAN_FLT22, &CAN_FLT23, &CAN_FLT24,
+	&CAN_FLT25, &CAN_FLT26, &CAN_FLT27, &CAN_FLT28, &CAN_FLT29,
+	&CAN_FLT30, &CAN_FLT31
+};
 
-extern CAN_FIFO_t CAN_TXQ;
-extern CAN_FIFO_t CAN_FIFO1;
-extern CAN_FIFO_t CAN_FIFO2;
-extern CAN_FIFO_t CAN_FIFO3;
-extern CAN_FIFO_t CAN_FIFO4;
-extern CAN_FIFO_t CAN_FIFO5;
-extern CAN_FIFO_t CAN_FIFO6;
-extern CAN_FIFO_t CAN_FIFO7;
-extern CAN_FIFO_t CAN_FIFO8;
-extern CAN_FIFO_t CAN_FIFO9;
-extern CAN_FIFO_t CAN_FIFO10;
-extern CAN_FIFO_t CAN_FIFO11;
-extern CAN_FIFO_t CAN_FIFO12;
-extern CAN_FIFO_t CAN_FIFO13;
-extern CAN_FIFO_t CAN_FIFO14;
-extern CAN_FIFO_t CAN_FIFO15;
-extern CAN_FIFO_t CAN_FIFO16;
-extern CAN_FIFO_t CAN_FIFO17;
-extern CAN_FIFO_t CAN_FIFO18;
-extern CAN_FIFO_t CAN_FIFO19;
-extern CAN_FIFO_t CAN_FIFO20;
-extern CAN_FIFO_t CAN_FIFO21;
-extern CAN_FIFO_t CAN_FIFO22;
-extern CAN_FIFO_t CAN_FIFO23;
-extern CAN_FIFO_t CAN_FIFO24;
-extern CAN_FIFO_t CAN_FIFO25;
-extern CAN_FIFO_t CAN_FIFO26;
-extern CAN_FIFO_t CAN_FIFO27;
-extern CAN_FIFO_t CAN_FIFO28;
-extern CAN_FIFO_t CAN_FIFO29;
-extern CAN_FIFO_t CAN_FIFO30;
-extern CAN_FIFO_t CAN_FIFO31;
+extern const CAN_FIFO_t CAN_TXQ;
+extern const CAN_FIFO_t CAN_FIFO1;
+extern const CAN_FIFO_t CAN_FIFO2;
+extern const CAN_FIFO_t CAN_FIFO3;
+extern const CAN_FIFO_t CAN_FIFO4;
+extern const CAN_FIFO_t CAN_FIFO5;
+extern const CAN_FIFO_t CAN_FIFO6;
+extern const CAN_FIFO_t CAN_FIFO7;
+extern const CAN_FIFO_t CAN_FIFO8;
+extern const CAN_FIFO_t CAN_FIFO9;
+extern const CAN_FIFO_t CAN_FIFO10;
+extern const CAN_FIFO_t CAN_FIFO11;
+extern const CAN_FIFO_t CAN_FIFO12;
+extern const CAN_FIFO_t CAN_FIFO13;
+extern const CAN_FIFO_t CAN_FIFO14;
+extern const CAN_FIFO_t CAN_FIFO15;
+extern const CAN_FIFO_t CAN_FIFO16;
+extern const CAN_FIFO_t CAN_FIFO17;
+extern const CAN_FIFO_t CAN_FIFO18;
+extern const CAN_FIFO_t CAN_FIFO19;
+extern const CAN_FIFO_t CAN_FIFO20;
+extern const CAN_FIFO_t CAN_FIFO21;
+extern const CAN_FIFO_t CAN_FIFO22;
+extern const CAN_FIFO_t CAN_FIFO23;
+extern const CAN_FIFO_t CAN_FIFO24;
+extern const CAN_FIFO_t CAN_FIFO25;
+extern const CAN_FIFO_t CAN_FIFO26;
+extern const CAN_FIFO_t CAN_FIFO27;
+extern const CAN_FIFO_t CAN_FIFO28;
+extern const CAN_FIFO_t CAN_FIFO29;
+extern const CAN_FIFO_t CAN_FIFO30;
+extern const CAN_FIFO_t CAN_FIFO31;
 
-extern CAN_FIFO_t* FIFO_Settings[32];
+const CAN_FIFO_t* const FIFO_Settings[32] = {
+	&CAN_TXQ, &CAN_FIFO1, &CAN_FIFO2, &CAN_FIFO3, &CAN_FIFO4,
+	&CAN_FIFO5, &CAN_FIFO6, &CAN_FIFO7, &CAN_FIFO8, &CAN_FIFO9,
+	&CAN_FIFO10, &CAN_FIFO11, &CAN_FIFO12, &CAN_FIFO13, &CAN_FIFO14,
+	&CAN_FIFO15, &CAN_FIFO16, &CAN_FIFO17, &CAN_FIFO18, &CAN_FIFO19,
+	&CAN_FIFO20, &CAN_FIFO21, &CAN_FIFO22, &CAN_FIFO23, &CAN_FIFO24,
+	&CAN_FIFO25, &CAN_FIFO26, &CAN_FIFO27, &CAN_FIFO28, &CAN_FIFO29,
+	&CAN_FIFO30, &CAN_FIFO31
+};
 
 class MCP2517_C : public com_driver_c {
 	public:
 		void Init(const CAN_Config_t canConfig);
-		void Reconfigure_Filters(uint32_t mask);
+		void Reconfigure_Filter(CAN_Filter_t filterSetting, uint8_t filterNum);
 		inline void Set_Rx_Callback(void (*cb)(CAN_Rx_msg_t*)){ Rx_Callback = cb; }			// Set function to send the received data to
 		uint8_t Check_Rx();	// Try reading from MCP2517, return 0 if busy. Suggest triggering this via an RTC or checking the intpin
 		uint8_t Transmit_Message(CAN_Tx_msg_t* msg, uint8_t fifoNum);
@@ -330,8 +346,8 @@ class MCP2517_C : public com_driver_c {
 		communication_base_c* com;
 		uint8_t comSlaveNum;
 		void Reset();
-		inline void Filter_Init(CAN_Filter_t* setting, uint8_t filterNum);
-		inline void FIFO_Init(CAN_FIFO_t* setting, uint8_t fifoNum);
+		inline void Filter_Init(const CAN_Filter_t* setting, uint8_t filterNum);
+		inline void FIFO_Init(const CAN_FIFO_t* setting, uint8_t fifoNum);
 		void Write_Word_Blocking(enum ADDR_E addr, uint32_t data);
 		uint32_t Receive_Word_Blocking(enum ADDR_E addr);
 		uint8_t Send_Buffer(enum ADDR_E addr, char* data, uint8_t length);
@@ -360,7 +376,7 @@ inline uint8_t MCP2517_C::Ready(){
 	return (msgState == Msg_Idle);
 }
 
-inline void MCP2517_C::Filter_Init(CAN_Filter_t* setting, uint8_t filterNum){
+inline void MCP2517_C::Filter_Init(const CAN_Filter_t* setting, uint8_t filterNum){
 	// Set mask
 	uint32_t temp = 0;
 	temp |= (setting->matchBothIDTypes ? 0 : 1) << 30;
@@ -387,7 +403,7 @@ inline void MCP2517_C::Filter_Init(CAN_Filter_t* setting, uint8_t filterNum){
 	filterTimestamp |= (FIFO_Settings[filterNum]->receiveTimestamp ? 1 : 0) << filterNum;
 }
 
-inline void MCP2517_C::FIFO_Init(CAN_FIFO_t* setting, uint8_t fifoNum){
+inline void MCP2517_C::FIFO_Init(const CAN_FIFO_t* setting, uint8_t fifoNum){
 	uint32_t temp = 0;
 	
 	// Find required DLC size
