@@ -63,31 +63,14 @@ void SPI_SAMD_C::Init(const spi_config_t config){
 	volatile uint8_t temp = com->SPI.DATA.reg;
 }
 
-// Reads the internal buffer of the object
-// Clears Rx_Ready state
-uint8_t SPI_SAMD_C::Read_Buffer(char* buff){
-	for (uint8_t i = 0; i < msgLength; i++) {
-		buff[i] = msgBuff[i];
-	}
-	
-	if (currentState == Rx_Ready){
-		currentState = Idle;
-	}
-	
-	return rxIndex;
-}
-
 uint8_t SPI_SAMD_C::Transfer(char* buff, uint8_t length, com_state_e state){
 	if (currentState == Idle){
 		currentState = state;
 		msgLength = length;
 		txIndex = 0;
 		rxIndex = 0;
-		if ((state == Tx) || (state == RxTx)){
-			for (uint8_t i = 0; i < length; i++) {
-				msgBuff[i] = buff[i];
-			}
-		}
+		msgBuff = buff;
+		com->SPI.INTFLAG.reg = SERCOM_SPI_INTENSET_RXC | SERCOM_SPI_INTFLAG_DRE;
 		com->SPI.INTENSET.reg = SERCOM_SPI_INTENSET_RXC | SERCOM_SPI_INTENSET_DRE;
 		return 1;
 	}

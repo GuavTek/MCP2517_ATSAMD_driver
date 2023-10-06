@@ -232,10 +232,12 @@ void MCP2517_C::Reconfigure_Filter(const CAN_Filter_t filterSetting, uint8_t fil
 
 // Reset the CAN controller
 void MCP2517_C::Reset(){
-	char temp[4] = {0,0,0,0};
+	for (uint8_t i = 0; i < 4; i++){
+		msgBuff[i] = 0;
+	}
 	while(com->Get_Status() != Idle);
 	com->Select_Slave(comSlaveNum);
-	com->Transfer(temp, 4, Tx);
+	com->Transfer(msgBuff, 4, Tx);
 	while(com->Get_Status() != Idle);
 	com->Select_Slave(-1);
 }
@@ -243,17 +245,16 @@ void MCP2517_C::Reset(){
 // Sends a number of bytes to the specified address of the MCP2517
 uint8_t MCP2517_C::Send_Buffer(enum ADDR_E addr, char* data, uint8_t length){
 	if (com->Get_Status() == Idle){
-		char tempBuff[length+2];
 		// Write buffer
-		tempBuff[0] = ((char) MCP2517_INSTR_E::Write << 4) | ((uint16_t) addr >> 8);
-		tempBuff[1] = (uint8_t) addr & 0xff;
+		msgBuff[0] = ((char) MCP2517_INSTR_E::Write << 4) | ((uint16_t) addr >> 8);
+		msgBuff[1] = (uint8_t) addr & 0xff;
 		
 		for (uint8_t i = 0; i < length; i++){
-			tempBuff[i+2] = data[i];
+			msgBuff[i+2] = data[i];
 		}
 		
 		com->Select_Slave(comSlaveNum);
-		com->Transfer(tempBuff, length+2, Tx);
+		com->Transfer(msgBuff, length+2, Tx);
 		
 		// Return success
 		return 1;
@@ -266,13 +267,12 @@ uint8_t MCP2517_C::Send_Buffer(enum ADDR_E addr, char* data, uint8_t length){
 // Reads a number of bytes from the specified address of the MCP2517
 uint8_t MCP2517_C::Receive_Buffer(enum ADDR_E addr, uint8_t length){
 	if (com->Get_Status() == Idle){
-		char tempBuff[length+2];
 		// Write buffer
-		tempBuff[0] = ((char) MCP2517_INSTR_E::Read << 4) | ((uint16_t) addr >> 8);
-		tempBuff[1] = (uint8_t) addr & 0xff;
+		msgBuff[0] = ((char) MCP2517_INSTR_E::Read << 4) | ((uint16_t) addr >> 8);
+		msgBuff[1] = (uint8_t) addr & 0xff;
 		
 		com->Select_Slave(comSlaveNum);
-		com->Transfer(tempBuff, length+2, RxTx);
+		com->Transfer(msgBuff, length+2, RxTx);
 		
 		return 1;
 	} else {
@@ -306,8 +306,7 @@ uint32_t MCP2517_C::Receive_Word_Blocking(enum ADDR_E addr){
 	while(com->Get_Status() != Idle);
 	com->Select_Slave(comSlaveNum);
 	com->Transfer(temp, 6, RxTx);
-	while(com->Get_Status() != Rx_Ready);
-	com->Read_Buffer(temp);
+	while(com->Get_Status() != Idle);
 	com->Select_Slave(-1);
 	uint32_t result = temp[2] | (temp[3] << 8) | (temp[4] << 16) | (temp[5] << 24);
 	return result;
@@ -341,7 +340,7 @@ uint8_t MCP2517_C::Transmit_Message(CAN_Tx_msg_t* data, uint8_t fifoNum){
 		payloadLength = Get_Data_Length(data->dataLengthCode);
 		msgBuff[2] = data->id;
 		msgBuff[3] = data->id >> 8;
-		msgBuff[4] = data->id >> 16;
+		msgBuff[4] = data->id >> 16;		// TODO: fix buffer being overwritten 
 		msgBuff[5] = data->id >> 24;
 		
 		uint8_t temp = 0;
@@ -412,12 +411,10 @@ uint8_t MCP2517_C::Check_Rx(){
 void MCP2517_C::com_cb(){
 	switch(msgState){
 		case Msg_Rx_Flags:
-		if (com->Get_Status() == Rx_Ready){
+		if (com->Get_Status() == Idle){
 			// Rx flags were fetched, check if data is waiting
 			com->Select_Slave(-1);
-			char temp[6];
-			com->Read_Buffer(temp);
-			uint32_t intFlags = temp[2] | (temp[3] << 8) | (temp[4] << 16) | (temp[5] << 24);
+			uint32_t intFlags = msgBuff[2] | (msgBuff[3] << 8) | (msgBuff[4] << 16) | (msgBuff[5] << 24);
 			if (intFlags == 0){
 				// No message
 				msgState = Msg_Idle;
@@ -435,40 +432,37 @@ void MCP2517_C::com_cb(){
 		}
 		break;
 		case Msg_Rx_Addr:
-		if (com->Get_Status() == Rx_Ready){
+		if (com->Get_Status() == Idle){
 			// Rx RAM address fetched, start fetching data
 			com->Select_Slave(-1);
 			msgState = Msg_Rx_Data;
-			char temp[4];
-			com->Read_Buffer(temp);
 			
-			uint16_t addr = (temp[3] << 8) | temp[2];
+			uint16_t addr = (msgBuff[3] << 8) | msgBuff[2];
 			addr += (uint16_t) ADDR_E::RAM_START;
 			Receive_Buffer((ADDR_E) addr, 26);
 		}
 		break;
 		case Msg_Rx_Data:
-		if (com->Get_Status() == Rx_Ready){
+		if (com->Get_Status() == Idle){
 			// Rx data fetched, increment fifo
 			com->Select_Slave(-1);
-			char buffer[26];
-			com->Read_Buffer(buffer);
 			CAN_Rx_msg_t tempMsg;
 			
-			tempMsg.id = buffer[2] | (buffer[3] << 8) | (buffer[4] << 16) | (buffer[5] << 24);
-			tempMsg.dataLengthCode = buffer[6] & 0x0f;
-			tempMsg.extendedID = (buffer[6] & 0x10) ? 1 : 0;
-			tempMsg.requestRemote = (buffer[6] & 0x20) ? 1 : 0;
-			tempMsg.bitrateSwitch = (buffer[6] & 0x40) ? 1 : 0;
-			tempMsg.canFDFrame = (buffer[6] & 0x80) ? 1 : 0;
-			tempMsg.errorStatus = (buffer[7] & 0x01) ? 1 : 0;
-			tempMsg.filterHit = buffer[7] >> 3;
+			// TODO: Split to fetch header to avoid unnecessary reading
+			tempMsg.id = msgBuff[2] | (msgBuff[3] << 8) | (msgBuff[4] << 16) | (msgBuff[5] << 24);
+			tempMsg.dataLengthCode = msgBuff[6] & 0x0f;
+			tempMsg.extendedID = (msgBuff[6] & 0x10) ? 1 : 0;
+			tempMsg.requestRemote = (msgBuff[6] & 0x20) ? 1 : 0;
+			tempMsg.bitrateSwitch = (msgBuff[6] & 0x40) ? 1 : 0;
+			tempMsg.canFDFrame = (msgBuff[6] & 0x80) ? 1 : 0;
+			tempMsg.errorStatus = (msgBuff[7] & 0x01) ? 1 : 0;
+			tempMsg.filterHit = msgBuff[7] >> 3;
 			
 			if (filterTimestamp & (1 << tempMsg.filterHit)){
-				tempMsg.timeStamp = buffer[10] | (buffer[11] << 8) | (buffer[12] << 16) | (buffer[13] << 24);
-				tempMsg.payload = &buffer[14];
+				tempMsg.timeStamp = msgBuff[10] | (msgBuff[11] << 8) | (msgBuff[12] << 16) | (msgBuff[13] << 24);
+				tempMsg.payload = &msgBuff[14];
 			} else {
-				tempMsg.payload = &buffer[10];
+				tempMsg.payload = &msgBuff[10];
 			}
 			
 			Rx_Callback(&tempMsg);
@@ -484,14 +478,12 @@ void MCP2517_C::com_cb(){
 		}
 		break;
 		case Msg_Tx_Addr:
-		if (com->Get_Status() == Rx_Ready){
+		if (com->Get_Status() == Idle){
 			// Tx RAM address was fetched, send data
 			com->Select_Slave(-1);
 			msgState = Msg_Tx_Data;
-			char temp[4];
-			com->Read_Buffer(temp);
 			
-			uint16_t addr = (temp[3] << 8) | temp[2];
+			uint16_t addr = (msgBuff[3] << 8) | msgBuff[2];
 			addr += (uint16_t) ADDR_E::RAM_START;
 			Send_Message_Object(addr);
 		}

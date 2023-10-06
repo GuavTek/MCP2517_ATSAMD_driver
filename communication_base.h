@@ -15,8 +15,7 @@ enum com_state_e {
 	Idle = 0,
 	Rx,
 	Tx,
-	RxTx,
-	Rx_Ready
+	RxTx
 };
 
 // An abstract class providing a callback handle the communication base uses
@@ -34,7 +33,6 @@ class communication_base_c
 		inline com_state_e Get_Status(){ return currentState; }		// Returns the internal state of the object
 		virtual void Set_Slave_Callback(uint8_t slaveNum, com_driver_c* cb);	// Set the object to call its com_cb function when transactions finish
 		virtual void Select_Slave(int slaveNum);	// Set the selected slave (-1 to de-select)
-		virtual uint8_t Read_Buffer(char* buff);	// Transfers data from the internal buffer to *buff, returns the number of bytes transferred
 		virtual uint8_t Transfer(char* buff, uint8_t length, com_state_e state);	// Try to start a transfer, returns 0 if operation failed
 	protected:
 		com_state_e currentState;

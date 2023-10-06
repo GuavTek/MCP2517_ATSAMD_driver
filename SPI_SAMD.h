@@ -31,7 +31,6 @@ class SPI_SAMD_C : public communication_base_c
 {
 	public:
 		virtual inline void Set_Slave_Callback(uint8_t slaveNum, com_driver_c* cb);
-		virtual uint8_t Read_Buffer(char* buff);
 		virtual uint8_t Transfer(char* buff, uint8_t length, com_state_e state);
 		virtual inline void Select_Slave(int slaveNum);
 		void Init(const spi_config_t config);
@@ -39,7 +38,7 @@ class SPI_SAMD_C : public communication_base_c
 		SPI_SAMD_C(Sercom* const SercomInstance) : com(SercomInstance){};
 	protected:
 		Sercom* const com;
-		char msgBuff[32];
+		char* msgBuff;
 		uint8_t lastSlave;
 		uint8_t msgLength;
 		uint8_t rxIndex;
@@ -89,7 +88,7 @@ inline void SPI_SAMD_C::Handler(){
 		if ((currentState == Rx) || (currentState == RxTx)) {
 			msgBuff[rxIndex++] = com->SPI.DATA.reg;
 			if (rxIndex >= msgLength) {
-				currentState = Rx_Ready;
+				currentState = Idle;
 				slaveCallbacks[lastSlave]->com_cb();
 				//com->SPI.INTENCLR.reg = SERCOM_SPI_INTENCLR_RXC;
 			}

@@ -335,7 +335,7 @@ class MCP2517_C : public com_driver_c {
 		void Reconfigure_Filter(CAN_Filter_t filterSetting, uint8_t filterNum);
 		inline void Set_Rx_Callback(void (*cb)(CAN_Rx_msg_t*)){ Rx_Callback = cb; }			// Set function to send the received data to
 		uint8_t Check_Rx();	// Try reading from MCP2517, return 0 if busy. Suggest triggering this via an RTC or checking the intpin
-		uint8_t Transmit_Message(CAN_Tx_msg_t* msg, uint8_t fifoNum);
+		uint8_t Transmit_Message(CAN_Tx_msg_t* msg, uint8_t fifoNum);	// TODO: implement partial write
 		uint32_t GetID(uint16_t SID, uint32_t EID);
 		inline uint8_t Get_DLC(uint8_t dataLength);
 		inline uint8_t Get_Data_Length(uint8_t DLC);
@@ -368,7 +368,7 @@ class MCP2517_C : public com_driver_c {
 		char msgBuff[32];		// TODO: maybe make array size changeable
 		uint8_t payloadLength;
 		enum {Msg_Idle = 0,
-			Msg_Rx_Flags, Msg_FIFO_Int, Msg_Status, Msg_Rx_Addr, Msg_Rx_Data, Msg_Rx_FIFO,
+			Msg_Rx_Flags, Msg_FIFO_Int, Msg_Status, Msg_Rx_Addr, Msg_Rx_Size, Msg_Rx_Data, Msg_Rx_FIFO,
 			Msg_Tx_Addr, Msg_Tx_Data, Msg_Tx_FIFO} msgState;
 };
 
