@@ -258,6 +258,17 @@ uint8_t MCP2517_C::Send_Buffer(enum ADDR_E addr, char* data, uint8_t length){
 	}
 };
 
+// Send the payload
+// Payload was loaded to buffer
+void MCP2517_C::Send_Buffer(enum ADDR_E addr, uint8_t length){
+	msgBuff[0] = ((char) MCP2517_INSTR_E::Write << 4) | ((uint16_t) addr >> 8);
+	msgBuff[1] = ((uint16_t) addr) & 0xff;
+	
+	com->Select_Slave(comSlaveNum);
+	com->Transfer(msgBuff, length+2, Tx);
+}
+
+
 // Reads a number of bytes from the specified address of the MCP2517
 uint8_t MCP2517_C::Receive_Buffer(enum ADDR_E addr, uint8_t length){
 	if (com->Get_Status() == Idle){
@@ -328,52 +339,82 @@ uint32_t MCP2517_C::GetID(uint16_t SID, uint32_t EID){
 	return temp;
 }
 
-// Attempts to start a message transfer
-uint8_t MCP2517_C::Transmit_Message(CAN_Tx_msg_t* data, uint8_t fifoNum){
+uint8_t MCP2517_C::Write_Message(CAN_Tx_msg_t* msg, uint8_t fifoNum){
 	if (msgState == Msg_Idle){
-		payloadLength = Get_Data_Length(data->dataLengthCode);
-		msgBuff[2] = data->id;
-		msgBuff[3] = data->id >> 8;
-		msgBuff[4] = data->id >> 16;		// TODO: fix buffer being overwritten 
-		msgBuff[5] = data->id >> 24;
+		payloadLength = Get_Data_Length(msg->dataLengthCode);
+		msgAddr = msg->id & 0xffff;
+		
+		msgBuff[4] = msg->id >> 16;
+		msgBuff[5] = msg->id >> 24;
 		
 		uint8_t temp = 0;
-		temp |= data->dataLengthCode;
-		temp |= (data->extendedID ? 1 : 0) << 4;
-		temp |= (data->requestRemote ? 1 : 0) << 5;
-		temp |= (data->bitrateSwitch ? 1 : 0) << 6;
-		temp |= (data->canFDFrame ? 1 : 0) << 7;
+		temp |= msg->dataLengthCode;
+		temp |= (msg->extendedID ? 1 : 0) << 4;
+		temp |= (msg->requestRemote ? 1 : 0) << 5;
+		temp |= (msg->bitrateSwitch ? 1 : 0) << 6;
+		temp |= (msg->canFDFrame ? 1 : 0) << 7;
 		msgBuff[6] = temp;
+		txHeadTemp = temp;
 		
 		temp = 0;
-		temp |= (data->errorIndicator ? 1 : 0);
-		temp |= data->sequence << 1;
+		temp |= (msg->errorIndicator ? 1 : 0);
+		temp |= msg->sequence << 1;
 		msgBuff[7] = temp;
 		msgBuff[8] = 0;
 		msgBuff[9] = 0;
+		txHeadTemp |= temp << 8;
 		
 		for (uint8_t i = 0; i < payloadLength; i++){
-			msgBuff[i+10] = data->payload[i];
+			msgBuff[i+10] = msg->payload[i];
 		}
 		
 		currentFifo = fifoNum;
 		
+		sendFifo = 0;
+		msgAppended = 0;
 		msgState = Msg_Tx_Addr;
 		FIFO_User_Address(fifoNum);
 		return 1;
-	} else {
-		return 0;
 	}
+	return 0;
 }
 
-// Send the payload
-// Payload was loaded to buffer by Transmit_Message
-void MCP2517_C::Send_Message_Object(uint16_t addr){
-	msgBuff[0] = ((char) MCP2517_INSTR_E::Write << 4) | ((uint16_t) addr >> 8);
-	msgBuff[1] = addr & 0xff;
-	
-	com->Select_Slave(comSlaveNum);
-	com->Transfer(msgBuff, payloadLength + 10, Tx);
+uint8_t MCP2517_C::Append_Payload(char* data, uint8_t length){
+	if (msgState == Msg_Tx_Idle){
+		uint16_t addr;
+		addr = msgAddr + 8 + payloadLength;
+		if (Send_Buffer((ADDR_E) addr, data, length)){
+			payloadLength += length;
+			msgAppended = 1;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+uint8_t MCP2517_C::Send_Message(){
+	if((msgState == Msg_Tx_Addr) || (msgState == Msg_Tx_Data)) {
+		sendFifo = 1;
+		return 1;
+	} else if (msgState == Msg_Tx_Idle)	{
+		if (msgAppended){
+			// Update payload length
+			sendFifo = 1;
+			msgState = Msg_Tx_Data;
+			msgAppended = 0;
+			msgBuff[2] = Get_DLC(payloadLength) | (txHeadTemp & 0xf0);
+			msgBuff[3] = txHeadTemp >> 8;
+			msgBuff[4] = 0;
+			msgBuff[5] = 0;
+			Send_Buffer((ADDR_E) (msgAddr+4), 4);
+		} else {
+			sendFifo = 0;
+			msgState = Msg_Tx_FIFO;
+			FIFO_Increment(currentFifo, 1);
+		}
+		return 1;
+	}
+	return 0;
 }
 
 // Request status info of FIFO

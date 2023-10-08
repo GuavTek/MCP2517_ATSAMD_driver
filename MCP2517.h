@@ -335,12 +335,14 @@ class MCP2517_C : public com_driver_c {
 		inline void Set_Rx_Callback(void (*cb)(CAN_Rx_msg_t*)){ Rx_Callback = cb; }			// Set function to send the received data to
 		void Reconfigure_Filter(const CAN_Filter_t* filterSetting, uint8_t filterNum);		// Change the configuration of a filter
 		uint8_t Check_Rx();	// Try reading from MCP2517, return 0 if busy. Suggest triggering this via an RTC or checking the intpin
-		uint8_t Transmit_Message(CAN_Tx_msg_t* msg, uint8_t fifoNum);	// TODO: implement partial write
 		uint32_t GetID(uint16_t SID, uint32_t EID);
 		inline uint8_t Get_DLC(uint8_t dataLength);
 		inline uint8_t Get_Data_Length(uint8_t DLC);
 		inline uint8_t Ready();
 		void com_cb() __attribute__((weak));
+		uint8_t Write_Message(CAN_Tx_msg_t* msg, uint8_t fifoNum);	// Write a message object to controller RAM, use Send_Message() to transmit this message on the CAN bus
+		uint8_t Append_Payload(char* data, uint8_t length);		// Append payload to previous message	TODO? verify payload size not overflowing
+		uint8_t Send_Message();		// Send the message which was written to controller RAM
 		MCP2517_C(communication_base_c* const comInstance) : com(comInstance){};
 	protected:
 		communication_base_c* com;
@@ -350,7 +352,6 @@ class MCP2517_C : public com_driver_c {
 		inline void FIFO_Init(const CAN_FIFO_t* setting, uint8_t fifoNum);
 		void Write_Word_Blocking(enum ADDR_E addr, uint32_t data);
 		uint32_t Receive_Word_Blocking(enum ADDR_E addr);
-		uint8_t Send_Buffer(enum ADDR_E addr, char* data, uint8_t length);
 		uint8_t Receive_Buffer(enum ADDR_E addr, uint8_t length);
 		void (*Rx_Callback)(CAN_Rx_msg_t*);
 		uint8_t (*Check_Rx_Callback)(void);
@@ -358,15 +359,20 @@ class MCP2517_C : public com_driver_c {
 		inline uint16_t Get_FIFOCON_Addr(uint8_t fifoNum);
 		inline uint16_t Get_FIFOSTA_Addr(uint8_t fifoNum);
 		inline uint16_t Get_FIFOUA_Addr(uint8_t fifoNum);
-		void Send_Message_Object(uint16_t addr);
 		void FIFO_Increment(uint8_t fifoNum, uint8_t txRequest);
 		void FIFO_User_Address(uint8_t fifoNum);
 		void Check_FIFO_Status(uint8_t fifoNum);
 		void Check_Rx_Flags_Reg();
-		uint8_t currentFifo;
 		char msgBuff[32];		// TODO: maybe make array size changeable
 		uint32_t fifoTimestamp;
-		uint8_t payloadLength;
+		uint8_t Send_Buffer(enum ADDR_E addr, char* data, uint8_t length);	// Send the contents of data to the MCP2517
+		void Send_Buffer(enum ADDR_E addr, uint8_t length);	// Send data from the internal buffer to the MCP2517
+		uint16_t msgAddr;		// Current message address
+		uint16_t txHeadTemp;	// Save T1 of the tx header in case the DLC must be updated
+		uint8_t sendFifo : 1;	// Will the fifo be incremented when data has been transferred?
+		uint8_t msgAppended : 1;	// Has the payload been appended?
+		uint8_t currentFifo : 5;	// The current fifo being accessed
+		uint8_t payloadLength;	// The length of the payload
 		enum {Msg_Idle = 0,
 			Msg_Rx_Flags, Msg_FIFO_Int, Msg_Status, Msg_Rx_Addr, Msg_Rx_Size, Msg_Rx_Data, Msg_Rx_FIFO,
 			Msg_Tx_Addr, Msg_Tx_Data, Msg_Tx_FIFO} msgState;
