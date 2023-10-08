@@ -332,8 +332,9 @@ const CAN_FIFO_t* const FIFO_Settings[32] = {
 class MCP2517_C : public com_driver_c {
 	public:
 		void Init(const CAN_Config_t canConfig);
-		inline void Set_Rx_Callback(void (*cb)(CAN_Rx_msg_t*)){ Rx_Callback = cb; }			// Set function to send the received data to
 		void Reconfigure_Filter(const CAN_Filter_t* filterSetting, uint8_t filterNum);		// Change the configuration of a filter
+		inline void Set_Rx_Header_Callback(void (*cb)(CAN_Rx_msg_t*)){ Rx_Header_Callback = cb; }			// Set function to send the received CAN headers to
+		inline void Set_Rx_Data_Callback(void (*cb)(char*, uint8_t)){ Rx_Data_Callback = cb; }			// Set function to send the received payloads to
 		uint8_t Check_Rx();	// Try reading from MCP2517, return 0 if busy. Suggest triggering this via an RTC or checking the intpin
 		uint32_t GetID(uint16_t SID, uint32_t EID);
 		inline uint8_t Get_DLC(uint8_t dataLength);
@@ -353,8 +354,6 @@ class MCP2517_C : public com_driver_c {
 		void Write_Word_Blocking(enum ADDR_E addr, uint32_t data);
 		uint32_t Receive_Word_Blocking(enum ADDR_E addr);
 		uint8_t Receive_Buffer(enum ADDR_E addr, uint8_t length);
-		void (*Rx_Callback)(CAN_Rx_msg_t*);
-		uint8_t (*Check_Rx_Callback)(void);
 		void Check_Int_Reg();
 		inline uint16_t Get_FIFOCON_Addr(uint8_t fifoNum);
 		inline uint16_t Get_FIFOSTA_Addr(uint8_t fifoNum);
@@ -363,16 +362,18 @@ class MCP2517_C : public com_driver_c {
 		void FIFO_User_Address(uint8_t fifoNum);
 		void Check_FIFO_Status(uint8_t fifoNum);
 		void Check_Rx_Flags_Reg();
-		char msgBuff[32];		// TODO: maybe make array size changeable
 		uint32_t fifoTimestamp;
 		uint8_t Send_Buffer(enum ADDR_E addr, char* data, uint8_t length);	// Send the contents of data to the MCP2517
 		void Send_Buffer(enum ADDR_E addr, uint8_t length);	// Send data from the internal buffer to the MCP2517
+		void (*Rx_Header_Callback)(CAN_Rx_msg_t*);	// The callback function for header objects
+		void (*Rx_Data_Callback)(char*, uint8_t);	// The callback function for payloads
 		uint16_t msgAddr;		// Current message address
 		uint16_t txHeadTemp;	// Save T1 of the tx header in case the DLC must be updated
 		uint8_t sendFifo : 1;	// Will the fifo be incremented when data has been transferred?
 		uint8_t msgAppended : 1;	// Has the payload been appended?
 		uint8_t currentFifo : 5;	// The current fifo being accessed
 		uint8_t payloadLength;	// The length of the payload
+		char msgBuff[34];		// The internal buffer
 		enum {Msg_Idle = 0,
 			Msg_Rx_Flags, Msg_FIFO_Int, Msg_Status, 
 			Msg_Rx_Addr, Msg_Rx_Header, Msg_Rx_Data, Msg_Rx_FIFO,

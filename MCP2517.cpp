@@ -459,7 +459,7 @@ void MCP2517_C::com_cb(){
 					if (intFlags & (1 << i)){
 						msgState = Msg_Rx_Addr;
 						FIFO_User_Address(i);
-						currentFifo = i;	// TODO: verify
+						currentFifo = i;
 						break;
 					}
 				}
@@ -468,22 +468,21 @@ void MCP2517_C::com_cb(){
 		break;
 		case Msg_Rx_Addr:
 		if (com->Get_Status() == Idle){
-			// Rx RAM address fetched, start fetching data
+			// Rx RAM address fetched, start fetching header
 			com->Select_Slave(-1);
-			msgState = Msg_Rx_Data;
+			msgState = Msg_Rx_Header;
 			
 			uint16_t addr = (msgBuff[3] << 8) | msgBuff[2];
 			addr += (uint16_t) ADDR_E::RAM_START;
-			Receive_Buffer((ADDR_E) addr, 26);
+			msgAddr = addr;
+			Receive_Buffer((ADDR_E) addr, 12);
 		}
 		break;
-		case Msg_Rx_Data:
+		case Msg_Rx_Header:
 		if (com->Get_Status() == Idle){
-			// Rx data fetched, increment fifo
 			com->Select_Slave(-1);
 			CAN_Rx_msg_t tempMsg;
 			
-			// TODO: Split to fetch header to avoid unnecessary reading
 			tempMsg.id = msgBuff[2] | (msgBuff[3] << 8) | (msgBuff[4] << 16) | (msgBuff[5] << 24);
 			tempMsg.dataLengthCode = msgBuff[6] & 0x0f;
 			tempMsg.extendedID = (msgBuff[6] & 0x10) ? 1 : 0;
@@ -493,16 +492,41 @@ void MCP2517_C::com_cb(){
 			tempMsg.errorStatus = (msgBuff[7] & 0x01) ? 1 : 0;
 			tempMsg.filterHit = msgBuff[7] >> 3;
 			
+			payloadLength = Get_Data_Length(tempMsg.dataLengthCode);
+			
 			if (fifoTimestamp & (1 << currentFifo)){
 				tempMsg.timeStamp = msgBuff[10] | (msgBuff[11] << 8) | (msgBuff[12] << 16) | (msgBuff[13] << 24);
 				tempMsg.payload = &msgBuff[14];
+				msgAddr += 12;
 			} else {
 				tempMsg.payload = &msgBuff[10];
+				msgAddr += 8;
 			}
+			Rx_Header_Callback(&tempMsg);
+			// Fetch data
+			if (payloadLength > 32){
+				Receive_Buffer((ADDR_E) msgAddr, 32);
+			} else {
+				Receive_Buffer((ADDR_E) msgAddr, payloadLength);
+			}
+			msgState = Msg_Rx_Data;
+		}
+		break;
+		case Msg_Rx_Data:
+		if (com->Get_Status() == Idle){
+			com->Select_Slave(-1);
 			
-			Rx_Callback(&tempMsg);
-			msgState = Msg_Rx_FIFO;
-			FIFO_Increment(currentFifo, 0);
+			if (payloadLength > 32){
+				payloadLength -= 32;
+				msgAddr += 32;
+				Rx_Data_Callback(msgBuff, 32);
+				Receive_Buffer((ADDR_E) msgAddr, 32);
+			} else {
+				// Done fetching Rx data, increment fifo
+				Rx_Data_Callback(&msgBuff[2], payloadLength);
+				msgState = Msg_Rx_FIFO;
+				FIFO_Increment(currentFifo, 0);
+			}
 		}
 		break;
 		case Msg_Rx_FIFO:
