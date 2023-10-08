@@ -331,42 +331,42 @@ const CAN_FIFO_t* const FIFO_Settings[32] = {
 
 class MCP2517_C : public com_driver_c {
 	public:
-		void Init(const CAN_Config_t canConfig);
+		void Init(const CAN_Config_t canConfig);	// Apply the configuration to the controller
 		void Reconfigure_Filter(const CAN_Filter_t* filterSetting, uint8_t filterNum);		// Change the configuration of a filter
 		inline void Set_Rx_Header_Callback(void (*cb)(CAN_Rx_msg_t*)){ Rx_Header_Callback = cb; }			// Set function to send the received CAN headers to
 		inline void Set_Rx_Data_Callback(void (*cb)(char*, uint8_t)){ Rx_Data_Callback = cb; }			// Set function to send the received payloads to
 		uint8_t Check_Rx();	// Try reading from MCP2517, return 0 if busy. Suggest triggering this via an RTC or checking the intpin
-		uint32_t GetID(uint16_t SID, uint32_t EID);
-		inline uint8_t Get_DLC(uint8_t dataLength);
-		inline uint8_t Get_Data_Length(uint8_t DLC);
-		inline uint8_t Ready();
-		void com_cb() __attribute__((weak));
 		uint8_t Write_Message(CAN_Tx_msg_t* msg, uint8_t fifoNum);	// Write a message object to controller RAM, use Send_Message() to transmit this message on the CAN bus
 		uint8_t Append_Payload(char* data, uint8_t length);		// Append payload to previous message	TODO? verify payload size not overflowing
 		uint8_t Send_Message();		// Send the message which was written to controller RAM
+		uint32_t GetID(uint16_t SID, uint32_t EID);		// Convert the ID to the format used in controller
+		inline uint8_t Get_DLC(uint8_t dataLength);		// Convert payload length to the length code used in headers
+		inline uint8_t Get_Data_Length(uint8_t DLC);	// Convert the length code from a header to the payload length
+		inline uint8_t Ready();		// Check if CAN controller is idle
+		void com_cb() __attribute__((weak));	// The callback called when the com object is done transmitting data
 		MCP2517_C(communication_base_c* const comInstance) : com(comInstance){};
 	protected:
-		communication_base_c* com;
-		uint8_t comSlaveNum;
-		void Reset();
-		inline void Filter_Init(const CAN_Filter_t* setting, uint8_t filterNum);
-		inline void FIFO_Init(const CAN_FIFO_t* setting, uint8_t fifoNum);
-		void Write_Word_Blocking(enum ADDR_E addr, uint32_t data);
-		uint32_t Receive_Word_Blocking(enum ADDR_E addr);
-		uint8_t Receive_Buffer(enum ADDR_E addr, uint8_t length);
-		void Check_Int_Reg();
-		inline uint16_t Get_FIFOCON_Addr(uint8_t fifoNum);
-		inline uint16_t Get_FIFOSTA_Addr(uint8_t fifoNum);
-		inline uint16_t Get_FIFOUA_Addr(uint8_t fifoNum);
-		void FIFO_Increment(uint8_t fifoNum, uint8_t txRequest);
-		void FIFO_User_Address(uint8_t fifoNum);
-		void Check_FIFO_Status(uint8_t fifoNum);
-		void Check_Rx_Flags_Reg();
-		uint32_t fifoTimestamp;
+		communication_base_c* com;	// The communication driver to access the MCP2517
+		uint8_t comSlaveNum;	// The com driver may have multiple slaves, this is the number for this object
+		void Reset();	// Send a RESET command to the MCP2517
+		inline void Filter_Init(const CAN_Filter_t* setting, uint8_t filterNum);	// Write a filter setting to the MCP2517
+		inline void FIFO_Init(const CAN_FIFO_t* setting, uint8_t fifoNum);		// Write a fifo setting to the MCP2517
+		void Write_Word_Blocking(enum ADDR_E addr, uint32_t data);		// A blocking write to the MCP2517
+		uint32_t Receive_Word_Blocking(enum ADDR_E addr);				// A blocking read to the MCP2517
 		uint8_t Send_Buffer(enum ADDR_E addr, char* data, uint8_t length);	// Send the contents of data to the MCP2517
 		void Send_Buffer(enum ADDR_E addr, uint8_t length);	// Send data from the internal buffer to the MCP2517
+		uint8_t Receive_Buffer(enum ADDR_E addr, uint8_t length);	// Fetch data to the internal buffer from the MCP2517
 		void (*Rx_Header_Callback)(CAN_Rx_msg_t*);	// The callback function for header objects
 		void (*Rx_Data_Callback)(char*, uint8_t);	// The callback function for payloads
+		void Check_Int_Reg();	// Read the interrupt register of the MCP2517
+		inline uint16_t Get_FIFOCON_Addr(uint8_t fifoNum);	// Get the address of a fifo's control register
+		inline uint16_t Get_FIFOSTA_Addr(uint8_t fifoNum);	// Get the address of a fifo's status register
+		inline uint16_t Get_FIFOUA_Addr(uint8_t fifoNum);	// Get the address of a fifo's user address register (gives address the fifo points at)
+		void FIFO_Increment(uint8_t fifoNum, uint8_t txRequest);	// Increments the FIFO after reading/writing to it, optionally request a transmission
+		void FIFO_User_Address(uint8_t fifoNum);	// Fetch the current fifo address from the MCP2517
+		void Check_FIFO_Status(uint8_t fifoNum);	// Fetch the fifo status
+		void Check_Rx_Flags_Reg();	// Fetch the rx interrupt flags
+		uint32_t fifoTimestamp;		// Mask of which fifos use timestamps
 		uint16_t msgAddr;		// Current message address
 		uint16_t txHeadTemp;	// Save T1 of the tx header in case the DLC must be updated
 		uint8_t sendFifo : 1;	// Will the fifo be incremented when data has been transferred?
