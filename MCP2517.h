@@ -385,7 +385,7 @@ inline void MCP2517_C::Filter_Init(const CAN_Filter_t* setting, uint8_t filterNu
 	
 	// Set ID
 	temp = 0;
-	temp |= (setting->extendedID ? 1 : 0) << 30;	// TODO: Can be streamlined
+	temp |= (setting->extendedID ? 1 : 0) << 30;
 	temp |= setting->ID << 0;					// set ID (SID11, EID, SID10-0)
 	Write_Word_Blocking(ADDR_E(uint16_t(ADDR_E::C1FLTOBJ0) + 8 * filterNum), temp);
 	
@@ -518,7 +518,7 @@ inline uint8_t MCP2517_C::Get_Data_Length(uint8_t DLC){
 }
 
 inline uint16_t MCP2517_C::Get_FIFOCON_Addr(uint8_t fifoNum){
-	return ((uint16_t) ADDR_E::C1TXQCON + (0xc * fifoNum) + 1);
+	return ((uint16_t) ADDR_E::C1TXQCON + (0xc * fifoNum));
 }
 
 inline uint16_t MCP2517_C::Get_FIFOSTA_Addr(uint8_t fifoNum){

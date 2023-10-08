@@ -313,7 +313,7 @@ uint32_t MCP2517_C::Receive_Word_Blocking(enum ADDR_E addr){
 }
 
 void MCP2517_C::FIFO_Increment(uint8_t fifoNum, uint8_t txRequest){
-	uint16_t addr = Get_FIFOCON_Addr(fifoNum);
+	uint16_t addr = Get_FIFOCON_Addr(fifoNum) + 1;
 	
 	char data = 1 | (txRequest << 1);
 	
