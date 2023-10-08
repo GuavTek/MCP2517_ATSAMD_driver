@@ -199,10 +199,7 @@ void MCP2517_C::Init(const CAN_Config_t canConfig){
 	
 }
 
-void MCP2517_C::Reconfigure_Filter(const CAN_Filter_t filterSetting, uint8_t filterNum){
-	// Disable interrupts
-	//system_interrupt_enter_critical_section();
-	
+void MCP2517_C::Reconfigure_Filter(const CAN_Filter_t* filterSetting, uint8_t filterNum){
 	// Set config mode
 	uint32_t temp;
 	uint32_t lastMode;
@@ -216,7 +213,7 @@ void MCP2517_C::Reconfigure_Filter(const CAN_Filter_t filterSetting, uint8_t fil
 		temp = Receive_Word_Blocking(ADDR_E::C1CON);
 	} while ((temp & (0b111 << 21)) != (0b100 << 21));
 	
-	Filter_Init(&filterSetting, filterNum);
+	Filter_Init(filterSetting, filterNum);
 	
 	// Set previous mode
 	Write_Word_Blocking(ADDR_E::C1CON, lastMode);
@@ -225,9 +222,6 @@ void MCP2517_C::Reconfigure_Filter(const CAN_Filter_t filterSetting, uint8_t fil
 	do {
 		temp = Receive_Word_Blocking(ADDR_E::C1CON);
 	} while ((temp & (0b111 << 21)) != (lastMode & (0b111 << 21)));
-	
-	// Re-enable interrupts
-	//system_interrupt_leave_critical_section();
 }
 
 // Reset the CAN controller

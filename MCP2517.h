@@ -332,8 +332,8 @@ const CAN_FIFO_t* const FIFO_Settings[32] = {
 class MCP2517_C : public com_driver_c {
 	public:
 		void Init(const CAN_Config_t canConfig);
-		void Reconfigure_Filter(CAN_Filter_t filterSetting, uint8_t filterNum);
 		inline void Set_Rx_Callback(void (*cb)(CAN_Rx_msg_t*)){ Rx_Callback = cb; }			// Set function to send the received data to
+		void Reconfigure_Filter(const CAN_Filter_t* filterSetting, uint8_t filterNum);		// Change the configuration of a filter
 		uint8_t Check_Rx();	// Try reading from MCP2517, return 0 if busy. Suggest triggering this via an RTC or checking the intpin
 		uint8_t Transmit_Message(CAN_Tx_msg_t* msg, uint8_t fifoNum);	// TODO: implement partial write
 		uint32_t GetID(uint16_t SID, uint32_t EID);
