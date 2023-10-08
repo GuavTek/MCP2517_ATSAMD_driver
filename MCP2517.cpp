@@ -542,17 +542,36 @@ void MCP2517_C::com_cb(){
 			com->Select_Slave(-1);
 			msgState = Msg_Tx_Data;
 			
+			// Swap buffer address and message ID
 			uint16_t addr = (msgBuff[3] << 8) | msgBuff[2];
 			addr += (uint16_t) ADDR_E::RAM_START;
-			Send_Message_Object(addr);
+			msgBuff[2] = msgAddr;
+			msgBuff[3] = msgAddr >> 8;
+			msgAddr = addr;
+			Send_Buffer((ADDR_E) addr, payloadLength+8);	// Payload + header
 		}
 		break;
 		case Msg_Tx_Data:
 		if (com->Get_Status() == Idle){
 			// Tx data was sent to RAM, increment fifo and request data send
 			com->Select_Slave(-1);
-			msgState = Msg_Tx_FIFO;
-			FIFO_Increment(currentFifo, 1);
+			if(sendFifo) {
+				if (msgAppended){
+					msgAppended = 0;
+					msgBuff[2] = Get_DLC(payloadLength) | (txHeadTemp & 0xf0);
+					msgBuff[3] = txHeadTemp >> 8;
+					msgBuff[4] = 0;
+					msgBuff[5] = 0;
+					Send_Buffer((ADDR_E) (msgAddr+4), 4);
+				} else {
+					sendFifo = 0;
+					msgState = Msg_Tx_FIFO;
+					FIFO_Increment(currentFifo, 1);
+				}
+			} else {
+				// Wait for payload append
+				msgState = Msg_Tx_Idle;
+			}
 		}
 		break;
 		case Msg_Tx_FIFO:
