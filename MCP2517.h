@@ -363,9 +363,9 @@ class MCP2517_C : public com_driver_c {
 		void FIFO_User_Address(uint8_t fifoNum);
 		void Check_FIFO_Status(uint8_t fifoNum);
 		void Check_Rx_Flags_Reg();
-		uint32_t filterTimestamp;
 		uint8_t currentFifo;
 		char msgBuff[32];		// TODO: maybe make array size changeable
+		uint32_t fifoTimestamp;
 		uint8_t payloadLength;
 		enum {Msg_Idle = 0,
 			Msg_Rx_Flags, Msg_FIFO_Int, Msg_Status, Msg_Rx_Addr, Msg_Rx_Size, Msg_Rx_Data, Msg_Rx_FIFO,
@@ -398,9 +398,6 @@ inline void MCP2517_C::Filter_Init(const CAN_Filter_t* setting, uint8_t filterNu
 	}
 	temp |= (setting->fifoDestination) << (8 * (filterNum % 4));
 	Write_Word_Blocking(ADDR_E(uint16_t(ADDR_E::C1FLTCON0) + 4*(filterNum >> 2)), temp);
-	
-	filterTimestamp &= ~(1 << filterNum);
-	filterTimestamp |= (FIFO_Settings[filterNum]->receiveTimestamp ? 1 : 0) << filterNum;
 }
 
 inline void MCP2517_C::FIFO_Init(const CAN_FIFO_t* setting, uint8_t fifoNum){
@@ -425,6 +422,9 @@ inline void MCP2517_C::FIFO_Init(const CAN_FIFO_t* setting, uint8_t fifoNum){
 	} else {
 		tempDLC = 0b000;
 	}
+
+	fifoTimestamp &= ~(1 << fifoNum);
+	fifoTimestamp |= (setting->receiveTimestamp ? 1 : 0) << fifoNum;
 	
 	temp |= tempDLC << 29;
 	temp |= setting->fifoDepth << 24;

@@ -120,7 +120,7 @@ void MCP2517_C::Init(const CAN_Config_t canConfig){
 		temp = Receive_Word_Blocking(ADDR_E::C1CON);
 	} while ((temp & (0b111 << 21)) != (0b100 << 21));
 	
-	filterTimestamp = 0;
+	fifoTimestamp = 0;
 	for (uint8_t i = 0; i < 32; i++){
 		// Configure filters
 		if (Filter_Settings[i]->enabled){
@@ -458,7 +458,7 @@ void MCP2517_C::com_cb(){
 			tempMsg.errorStatus = (msgBuff[7] & 0x01) ? 1 : 0;
 			tempMsg.filterHit = msgBuff[7] >> 3;
 			
-			if (filterTimestamp & (1 << tempMsg.filterHit)){
+			if (fifoTimestamp & (1 << currentFifo)){
 				tempMsg.timeStamp = msgBuff[10] | (msgBuff[11] << 8) | (msgBuff[12] << 16) | (msgBuff[13] << 24);
 				tempMsg.payload = &msgBuff[14];
 			} else {
