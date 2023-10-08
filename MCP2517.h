@@ -374,8 +374,9 @@ class MCP2517_C : public com_driver_c {
 		uint8_t currentFifo : 5;	// The current fifo being accessed
 		uint8_t payloadLength;	// The length of the payload
 		enum {Msg_Idle = 0,
-			Msg_Rx_Flags, Msg_FIFO_Int, Msg_Status, Msg_Rx_Addr, Msg_Rx_Size, Msg_Rx_Data, Msg_Rx_FIFO,
-			Msg_Tx_Addr, Msg_Tx_Data, Msg_Tx_FIFO} msgState;
+			Msg_Rx_Flags, Msg_FIFO_Int, Msg_Status, 
+			Msg_Rx_Addr, Msg_Rx_Header, Msg_Rx_Data, Msg_Rx_FIFO,
+			Msg_Tx_Addr, Msg_Tx_Data, Msg_Tx_Idle, Msg_Tx_FIFO} msgState;	// The controller state
 };
 
 inline uint8_t MCP2517_C::Ready(){
