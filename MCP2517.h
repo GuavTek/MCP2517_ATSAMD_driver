@@ -343,8 +343,9 @@ class MCP2517_C : public com_driver_c {
 		inline uint8_t Get_DLC(uint8_t dataLength);		// Convert payload length to the length code used in headers
 		inline uint8_t Get_Data_Length(uint8_t DLC);	// Convert the length code from a header to the payload length
 		inline uint8_t Ready();		// Check if CAN controller is idle
-		void com_cb() __attribute__((weak));	// The callback called when the com object is done transmitting data
-		MCP2517_C(communication_base_c* const comInstance) : com(comInstance){};
+		virtual void com_cb();	// The callback called when the com object is done transmitting data
+		MCP2517_C(communication_base_c* const comInstance) {com = comInstance;};
+		~MCP2517_C() {};
 	protected:
 		communication_base_c* com;	// The communication driver to access the MCP2517
 		uint8_t comSlaveNum;	// The com driver may have multiple slaves, this is the number for this object
