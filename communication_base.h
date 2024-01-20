@@ -12,10 +12,10 @@
 #include <stdint.h>
 
 enum com_state_e {
-	Idle = 0,
-	Rx,
-	Tx,
-	RxTx
+	Idle	= 0,
+	Rx		= 0b01,
+	Tx		= 0b10,
+	RxTx	= 0b11
 };
 
 // An abstract class providing a callback handle the communication base uses
