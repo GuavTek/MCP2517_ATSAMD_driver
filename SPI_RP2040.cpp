@@ -61,6 +61,12 @@ uint8_t SPI_RP2040_C::Transfer(char* buff, uint8_t length, com_state_e state){
 		uint32_t chanMask = 0;
 		currentState = state;
 		if ((state == Rx) || (state == RxTx)){
+			while (spi_is_readable(com)){
+				// Clear data buffer
+				volatile uint8_t dummy;
+				spi_hw_t* spi_hw = spi_get_hw(com);
+				dummy = spi_hw->dr;
+			}
 			dma_channel_set_trans_count(dmaRx, length, false);
 			dma_channel_set_write_addr(dmaRx, buff, false);
 			chanMask |= 1 << dmaRx;
