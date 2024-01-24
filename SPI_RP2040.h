@@ -23,7 +23,7 @@ struct spi_config_t {
 	uint8_t pin_rx;
 	uint8_t pin_ck;
 	uint8_t num_cs;
-	uint8_t pin_cs[];
+	uint8_t pin_cs[16];
 };
 
 class SPI_RP2040_C : public communication_base_c
