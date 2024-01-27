@@ -58,19 +58,17 @@ void SPI_RP2040_C::Init(const spi_config_t config){
 
 uint8_t SPI_RP2040_C::Transfer(char* buff, uint8_t length, com_state_e state){
 	if (currentState == Idle){
-		uint32_t chanMask = 0;
-		currentState = state;
-		if ((state == Rx) || (state == RxTx)){
-			while (spi_is_readable(com)){
-				// Clear data buffer
-				volatile uint8_t dummy;
-				spi_hw_t* spi_hw = spi_get_hw(com);
-				dummy = spi_hw->dr;
-			}
-			dma_channel_set_trans_count(dmaRx, length, false);
-			dma_channel_set_write_addr(dmaRx, buff, false);
-			chanMask |= 1 << dmaRx;
+		currentState = RxTx;
+		// Always enable RX because we need it to detect TX end
+		uint32_t chanMask = 1 << dmaRx;
+		while (spi_is_readable(com)){
+			// Clear data buffer
+			volatile uint8_t dummy;
+			spi_hw_t* spi_hw = spi_get_hw(com);
+			dummy = spi_hw->dr;
 		}
+		dma_channel_set_trans_count(dmaRx, length, false);
+		dma_channel_set_write_addr(dmaRx, buff, false);
 		if ((state == Tx) || (state == RxTx)){
 			dma_channel_set_trans_count(dmaTx, length, false);
 			dma_channel_set_read_addr(dmaTx, buff, false);

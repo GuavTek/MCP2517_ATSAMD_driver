@@ -66,6 +66,9 @@ inline void SPI_RP2040_C::Handler(){
 		dma_irqn_acknowledge_channel(dmaNum, dmaTx);
 		currentState = (com_state_e) (currentState & ~Tx);
 	}
+	if (currentState == Idle){
+		slaveCallbacks[lastSlave]->com_cb();
+	}
 }
 
 #endif /* SPI_RP2040_H_ */
