@@ -58,6 +58,9 @@ inline void SPI_RP2040_C::Select_Slave(int slaveNum) {
 
 // SPI interrupt handler
 inline void SPI_RP2040_C::Handler(){
+	if (currentState == Idle){
+		return;
+	}
 	if (dma_irqn_get_channel_status(dmaNum, dmaRx)){
 		dma_irqn_acknowledge_channel(dmaNum, dmaRx);
 		currentState = (com_state_e) (currentState & ~Rx);
