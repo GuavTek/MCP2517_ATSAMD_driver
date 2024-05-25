@@ -129,7 +129,6 @@ enum class CAN_MODE_E {
 };
 
 struct CAN_Config_t {
-	uint8_t comSlaveNum = 0;
 	enum {	clkOutDiv1 = 0b00, 
 			clkOutDiv2 = 0b01, 
 			clkOutDiv4 = 0b10, 
@@ -344,11 +343,8 @@ class MCP2517_C : public com_driver_c {
 		inline uint8_t Get_Data_Length(uint8_t DLC);	// Convert the length code from a header to the payload length
 		inline uint8_t Ready();		// Check if CAN controller is idle
 		virtual void com_cb();	// The callback called when the com object is done transmitting data
-		MCP2517_C(communication_base_c* const comInstance) {com = comInstance;};
-		~MCP2517_C() {};
+		using com_driver_c::com_driver_c;
 	protected:
-		communication_base_c* com;	// The communication driver to access the MCP2517
-		uint8_t comSlaveNum;	// The com driver may have multiple slaves, this is the number for this object
 		void Reset();	// Send a RESET command to the MCP2517
 		inline void Filter_Init(const CAN_Filter_t* setting, uint8_t filterNum);	// Write a filter setting to the MCP2517
 		inline void FIFO_Init(const CAN_FIFO_t* setting, uint8_t fifoNum);		// Write a fifo setting to the MCP2517

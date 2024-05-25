@@ -35,7 +35,7 @@ class SPI_RP2040_C : public communication_base_c
 		inline int8_t get_dma_rx() {return dmaRx;}
 		inline int8_t get_dma_tx() {return dmaTx;}
 		virtual inline void Set_Slave_Callback(uint8_t slaveNum, com_driver_c* cb) {slaveCallbacks[slaveNum] = cb;}
-		virtual inline void Select_Slave(int slaveNum);
+		virtual inline uint8_t Select_Slave(uint8_t slaveNum, uint8_t enabled);
 		SPI_RP2040_C(spi_inst_t* const comInstance) : com(comInstance){};
 		~SPI_RP2040_C(){};
 	protected:
@@ -44,16 +44,23 @@ class SPI_RP2040_C : public communication_base_c
 		int8_t dmaRx;
 		int8_t dmaTx;
 		uint8_t lastSlave;
+		uint8_t slaveSelected;
 		uint8_t* csPin;
 		com_driver_c** slaveCallbacks;
 };
 
-inline void SPI_RP2040_C::Select_Slave(int slaveNum) {
-	gpio_put(csPin[lastSlave], 1);
-	if (slaveNum >= 0){
+inline uint8_t SPI_RP2040_C::Select_Slave(uint8_t slaveNum, uint8_t enabled) {
+	if (enabled && !slaveSelected){
 		gpio_put(csPin[slaveNum], 0);
 		lastSlave = slaveNum;
+		slaveSelected = 1;
+		return 1;
+	} else if (slaveNum == lastSlave) {
+		gpio_put(csPin[slaveNum], 1);
+		slaveSelected = 0;
+		return 1;
 	}
+	return 0;
 }
 
 // SPI interrupt handler

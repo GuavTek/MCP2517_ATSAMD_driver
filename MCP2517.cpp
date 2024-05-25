@@ -100,10 +100,6 @@ extern const CAN_FIFO_t CAN_FIFO31 __attribute__ ((weak, alias("Unused_Fifo")));
 
 // Initializes the MCP2517 chip
 void MCP2517_C::Init(const CAN_Config_t canConfig){
-	// Connect to com interface
-	comSlaveNum = canConfig.comSlaveNum;
-	com->Set_Slave_Callback(comSlaveNum, this);
-	
 	msgState = MCP2517_C::Msg_Idle;
 	
 	Reset();
@@ -230,10 +226,10 @@ void MCP2517_C::Reset(){
 		msgBuff[i] = 0;
 	}
 	while(com->Get_Status() != Idle);
-	com->Select_Slave(comSlaveNum);
+	Set_SS(1);
 	com->Transfer(msgBuff, 4, Tx);
 	while(com->Get_Status() != Idle);
-	com->Select_Slave(-1);
+	Set_SS(0);
 }
 
 // Sends a number of bytes to the specified address of the MCP2517
@@ -247,7 +243,7 @@ uint8_t MCP2517_C::Send_Buffer(enum ADDR_E addr, char* data, uint8_t length){
 			msgBuff[i+2] = data[i];
 		}
 		
-		com->Select_Slave(comSlaveNum);
+		Set_SS(1);
 		com->Transfer(msgBuff, length+2, Tx);
 		
 		// Return success
@@ -264,7 +260,7 @@ void MCP2517_C::Send_Buffer(enum ADDR_E addr, uint8_t length){
 	msgBuff[0] = ((char) MCP2517_INSTR_E::Write << 4) | ((uint16_t) addr >> 8);
 	msgBuff[1] = ((uint16_t) addr) & 0xff;
 	
-	com->Select_Slave(comSlaveNum);
+	Set_SS(1);
 	com->Transfer(msgBuff, length+2, Tx);
 }
 
@@ -276,7 +272,7 @@ uint8_t MCP2517_C::Receive_Buffer(enum ADDR_E addr, uint8_t length){
 		msgBuff[0] = ((char) MCP2517_INSTR_E::Read << 4) | ((uint16_t) addr >> 8);
 		msgBuff[1] = (uint8_t) addr & 0xff;
 		
-		com->Select_Slave(comSlaveNum);
+		Set_SS(1);
 		com->Transfer(msgBuff, length+2, RxTx);
 		
 		return 1;
@@ -295,10 +291,10 @@ void MCP2517_C::Write_Word_Blocking(enum ADDR_E addr, uint32_t data){
 	temp[4] = (data >> 16) & 0xff;
 	temp[5] = (data >> 24) & 0xff;
 	while(com->Get_Status() != Idle);
-	com->Select_Slave(comSlaveNum);
+	Set_SS(1);
 	com->Transfer(temp, 6, Tx);
 	while(com->Get_Status() != Idle);
-	com->Select_Slave(-1);
+	Set_SS(0);
 }
 
 uint32_t MCP2517_C::Receive_Word_Blocking(enum ADDR_E addr){
@@ -309,10 +305,10 @@ uint32_t MCP2517_C::Receive_Word_Blocking(enum ADDR_E addr){
 		temp[i] = 0;
 	}
 	while(com->Get_Status() != Idle);
-	com->Select_Slave(comSlaveNum);
+	Set_SS(1);
 	com->Transfer(temp, 6, RxTx);
 	while(com->Get_Status() != Idle);
-	com->Select_Slave(-1);
+	Set_SS(0);
 	uint32_t result = temp[2] | (temp[3] << 8) | (temp[4] << 16) | (temp[5] << 24);
 	return result;
 }
@@ -448,7 +444,7 @@ void MCP2517_C::com_cb(){
 		case Msg_Rx_Flags:
 		if (com->Get_Status() == Idle){
 			// Rx flags were fetched, check if data is waiting
-			com->Select_Slave(-1);
+			Set_SS(0);
 			uint32_t intFlags = msgBuff[2] | (msgBuff[3] << 8) | (msgBuff[4] << 16) | (msgBuff[5] << 24);
 			if (intFlags == 0){
 				// No message
@@ -469,7 +465,7 @@ void MCP2517_C::com_cb(){
 		case Msg_Rx_Addr:
 		if (com->Get_Status() == Idle){
 			// Rx RAM address fetched, start fetching header
-			com->Select_Slave(-1);
+			Set_SS(0);
 			msgState = Msg_Rx_Header;
 			
 			uint16_t addr = (msgBuff[3] << 8) | msgBuff[2];
@@ -480,7 +476,7 @@ void MCP2517_C::com_cb(){
 		break;
 		case Msg_Rx_Header:
 		if (com->Get_Status() == Idle){
-			com->Select_Slave(-1);
+			Set_SS(0);
 			CAN_Rx_msg_t tempMsg;
 			
 			tempMsg.id = msgBuff[2] | (msgBuff[3] << 8) | (msgBuff[4] << 16) | (msgBuff[5] << 24);
@@ -514,7 +510,7 @@ void MCP2517_C::com_cb(){
 		break;
 		case Msg_Rx_Data:
 		if (com->Get_Status() == Idle){
-			com->Select_Slave(-1);
+			Set_SS(0);
 			
 			if (payloadLength > 32){
 				payloadLength -= 32;
@@ -532,14 +528,14 @@ void MCP2517_C::com_cb(){
 		case Msg_Rx_FIFO:
 		if (com->Get_Status() == Idle){
 			// Rx done
-			com->Select_Slave(-1);
+			Set_SS(0);
 			msgState = Msg_Idle;
 		}
 		break;
 		case Msg_Tx_Addr:
 		if (com->Get_Status() == Idle){
 			// Tx RAM address was fetched, send data
-			com->Select_Slave(-1);
+			Set_SS(0);
 			msgState = Msg_Tx_Data;
 			
 			// Swap buffer address and message ID
@@ -554,7 +550,7 @@ void MCP2517_C::com_cb(){
 		case Msg_Tx_Data:
 		if (com->Get_Status() == Idle){
 			// Tx data was sent to RAM, increment fifo and request data send
-			com->Select_Slave(-1);
+			Set_SS(0);
 			if(sendFifo) {
 				if (msgAppended){
 					msgAppended = 0;
@@ -577,7 +573,7 @@ void MCP2517_C::com_cb(){
 		case Msg_Tx_FIFO:
 		if (com->Get_Status() == Idle){
 			// Tx done
-			com->Select_Slave(-1);
+			Set_SS(0);
 			msgState = Msg_Idle;
 		}
 		break;
