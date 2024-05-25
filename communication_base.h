@@ -10,6 +10,7 @@
 #define COMMUNICATION_BASE_H_
 
 #include <stdint.h>
+#include <stdlib.h>
 
 enum com_state_e {
 	Idle	= 0,
@@ -28,9 +29,14 @@ class communication_base_c
 		virtual void Set_Slave_Callback(uint8_t slaveNum, com_driver_c* cb) {};	// Set the object to call its com_cb function when transactions finish
 		virtual uint8_t Select_Slave(uint8_t slaveNum, uint8_t enabled) {};
 		virtual uint8_t Transfer(char* buff, uint8_t length, com_state_e state) {return 0;};	// Try to start a transfer, returns 0 if operation failed
-		communication_base_c() {};
-		~communication_base_c() {};
+		communication_base_c(uint8_t num_ss) {
+			numSS = num_ss;
+			slaveCallbacks = (com_driver_c**) malloc(4*num_ss);	// Allocate memory space for function pointers
+		};
+		~communication_base_c() {free(slaveCallbacks);};
 	protected:
+		uint8_t numSS;
+		com_driver_c** slaveCallbacks;
 		com_state_e currentState;
 };
 

@@ -23,7 +23,6 @@ struct spi_config_t {
 	uint32_t pinmux_mosi;
 	uint32_t pinmux_miso;
 	uint32_t pinmux_sck;
-	uint8_t num_cs;
 	uint8_t pin_cs[];
 };
 
@@ -35,7 +34,7 @@ class SPI_SAMD_C : public communication_base_c
 		virtual inline void Select_Slave(uint8_t slaveNum, uint8_t enabled);
 		void Init(const spi_config_t config);
 		inline void Handler();
-		SPI_SAMD_C(Sercom* const SercomInstance) : com(SercomInstance){};
+		SPI_SAMD_C(Sercom* const SercomInstance, uint8_t num_ss) : communication_base_c(num_ss), com(SercomInstance){};
 	protected:
 		Sercom* const com;
 		char* msgBuff;
@@ -45,7 +44,6 @@ class SPI_SAMD_C : public communication_base_c
 		uint8_t rxIndex;
 		uint8_t txIndex;
 		uint8_t* csPin;
-		com_driver_c** slaveCallbacks;
 };
 
 inline void SPI_SAMD_C::Set_Slave_Callback(uint8_t slaveNum, com_driver_c* cb){

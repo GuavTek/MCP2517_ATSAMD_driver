@@ -21,9 +21,8 @@ void SPI_RP2040_C::Init(const spi_config_t config){
 	gpio_set_function(config.pin_rx, GPIO_FUNC_SPI);
 	gpio_set_function(config.pin_ck, GPIO_FUNC_SPI);
 	
-	csPin = (uint8_t*) malloc(config.num_cs * sizeof(uint8_t));
-	slaveCallbacks = (com_driver_c**) malloc(4*config.num_cs);	// Allocate memory space for function pointers
-	for (uint8_t i = 0; i < config.num_cs; i++){
+	csPin = (uint8_t*) malloc(numSS * sizeof(uint8_t));
+	for (uint8_t i = 0; i < numSS; i++){
 		csPin[i] = config.pin_cs[i];
 		gpio_init(config.pin_cs[i]);
 		gpio_set_dir(config.pin_cs[i], GPIO_OUT);

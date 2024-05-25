@@ -22,7 +22,6 @@ struct spi_config_t {
 	uint8_t pin_tx;
 	uint8_t pin_rx;
 	uint8_t pin_ck;
-	uint8_t num_cs;
 	uint8_t pin_cs[16];
 };
 
@@ -36,7 +35,7 @@ class SPI_RP2040_C : public communication_base_c
 		inline int8_t get_dma_tx() {return dmaTx;}
 		virtual inline void Set_Slave_Callback(uint8_t slaveNum, com_driver_c* cb) {slaveCallbacks[slaveNum] = cb;}
 		virtual inline uint8_t Select_Slave(uint8_t slaveNum, uint8_t enabled);
-		SPI_RP2040_C(spi_inst_t* const comInstance) : com(comInstance){};
+		SPI_RP2040_C(spi_inst_t* const comInstance, uint8_t num_ss) : communication_base_c(num_ss), com(comInstance){} ;
 		~SPI_RP2040_C(){};
 	protected:
 		spi_inst_t* const com;
@@ -46,7 +45,6 @@ class SPI_RP2040_C : public communication_base_c
 		uint8_t lastSlave;
 		uint8_t slaveSelected;
 		uint8_t* csPin;
-		com_driver_c** slaveCallbacks;
 };
 
 inline uint8_t SPI_RP2040_C::Select_Slave(uint8_t slaveNum, uint8_t enabled) {
