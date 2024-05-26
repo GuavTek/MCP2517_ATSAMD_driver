@@ -33,7 +33,6 @@ class SPI_RP2040_C : public communication_base_c
 		uint8_t Transfer(char* buff, uint8_t length, com_state_e state);
 		inline int8_t get_dma_rx() {return dmaRx;}
 		inline int8_t get_dma_tx() {return dmaTx;}
-		virtual inline void Set_Slave_Callback(uint8_t slaveNum, com_driver_c* cb) {slaveCallbacks[slaveNum] = cb;}
 		virtual inline uint8_t Select_Slave(uint8_t slaveNum, uint8_t enabled);
 		SPI_RP2040_C(spi_inst_t* const comInstance, uint8_t num_ss) : communication_base_c(num_ss), com(comInstance){} ;
 		~SPI_RP2040_C(){};

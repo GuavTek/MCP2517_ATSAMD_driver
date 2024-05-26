@@ -29,7 +29,6 @@ struct spi_config_t {
 class SPI_SAMD_C : public communication_base_c
 {
 	public:
-		virtual inline void Set_Slave_Callback(uint8_t slaveNum, com_driver_c* cb);
 		virtual uint8_t Transfer(char* buff, uint8_t length, com_state_e state);
 		virtual inline void Select_Slave(uint8_t slaveNum, uint8_t enabled);
 		void Init(const spi_config_t config);
@@ -45,10 +44,6 @@ class SPI_SAMD_C : public communication_base_c
 		uint8_t txIndex;
 		uint8_t* csPin;
 };
-
-inline void SPI_SAMD_C::Set_Slave_Callback(uint8_t slaveNum, com_driver_c* cb){
-	slaveCallbacks[slaveNum] = cb;
-}
 
 inline void SPI_SAMD_C::Select_Slave(uint8_t slaveNum, uint8_t enabled) {
 	if (enabled && !slaveSelected){
