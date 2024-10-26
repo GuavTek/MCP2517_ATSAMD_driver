@@ -195,29 +195,14 @@ void MCP2517_C::Init(const CAN_Config_t canConfig){
 	
 }
 
-void MCP2517_C::Reconfigure_Filter(const CAN_Filter_t* filterSetting, uint8_t filterNum){
-	// Set config mode
-	uint32_t temp;
-	uint32_t lastMode;
-	lastMode = Receive_Word_Blocking(ADDR_E::C1CON);
-	temp = lastMode & ~(0b111 << 24);
-	temp |= 0b100 << 24;	// Request config mode
-	Write_Word_Blocking(ADDR_E::C1CON, temp);
-	
-	// Wait for config mode
-	do {
-		temp = Receive_Word_Blocking(ADDR_E::C1CON);
-	} while ((temp & (0b111 << 21)) != (0b100 << 21));
-	
+void MCP2517_C::Reconfigure_Filter(CAN_Filter_t* filterSetting, uint8_t filterNum){
+	// Disable filter so it can be edited
+	filterSetting->enabled = 0;
 	Filter_Init(filterSetting, filterNum);
 	
-	// Set previous mode
-	Write_Word_Blocking(ADDR_E::C1CON, lastMode);
-	
-	// Wait for previous mode
-	do {
-		temp = Receive_Word_Blocking(ADDR_E::C1CON);
-	} while ((temp & (0b111 << 21)) != (lastMode & (0b111 << 21)));
+	// Configure and enable filter
+	filterSetting->enabled = 1;
+	Filter_Init(filterSetting, filterNum);
 }
 
 // Reset the CAN controller

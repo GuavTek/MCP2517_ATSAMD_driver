@@ -331,7 +331,7 @@ const CAN_FIFO_t* const FIFO_Settings[32] = {
 class MCP2517_C : public com_driver_c {
 	public:
 		void Init(const CAN_Config_t canConfig);	// Apply the configuration to the controller
-		void Reconfigure_Filter(const CAN_Filter_t* filterSetting, uint8_t filterNum);		// Change the configuration of a filter
+		void Reconfigure_Filter(CAN_Filter_t* filterSetting, uint8_t filterNum);		// Change the configuration of a filter
 		inline void Set_Rx_Header_Callback(void (*cb)(CAN_Rx_msg_t*)){ Rx_Header_Callback = cb; }			// Set function to send the received CAN headers to
 		inline void Set_Rx_Data_Callback(void (*cb)(char*, uint8_t)){ Rx_Data_Callback = cb; }			// Set function to send the received payloads to
 		uint8_t Check_Rx();	// Try reading from MCP2517, return 0 if busy. Suggest triggering this via an RTC or checking the intpin
