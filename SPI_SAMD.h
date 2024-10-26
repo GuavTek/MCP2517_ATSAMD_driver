@@ -30,7 +30,7 @@ class SPI_SAMD_C : public communication_base_c
 {
 	public:
 		virtual uint8_t Transfer(char* buff, uint8_t length, com_state_e state);
-		virtual inline void Select_Slave(uint8_t slaveNum, uint8_t enabled);
+		virtual inline uint8_t Select_Slave(uint8_t slaveNum, uint8_t enabled);
 		void Init(const spi_config_t config);
 		inline void Handler();
 		SPI_SAMD_C(Sercom* const SercomInstance, uint8_t num_ss) : communication_base_c(num_ss), com(SercomInstance){};
@@ -45,7 +45,7 @@ class SPI_SAMD_C : public communication_base_c
 		uint8_t* csPin;
 };
 
-inline void SPI_SAMD_C::Select_Slave(uint8_t slaveNum, uint8_t enabled) {
+inline uint8_t SPI_SAMD_C::Select_Slave(uint8_t slaveNum, uint8_t enabled) {
 	if (enabled && !slaveSelected){
 		port_pin_set_output_level(csPin[slaveNum], 0);
 		lastSlave = slaveNum;
