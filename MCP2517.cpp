@@ -3,7 +3,7 @@
  *
  * Created: 10/10/2021 15:18:05
  *  Author: GuavTek
- */ 
+ */
 
 #include "MCP2517.h"
 
@@ -101,21 +101,21 @@ extern const CAN_FIFO_t CAN_FIFO31 __attribute__ ((weak, alias("Unused_Fifo")));
 // Initializes the MCP2517 chip
 void MCP2517_C::Init(const CAN_Config_t canConfig){
 	msgState = MCP2517_C::Msg_Idle;
-	
+
 	Reset();
-	
+
 	uint32_t temp;
-	
+
 	temp = 0;
 	temp |= 1 << 27;							// Abort all pending transmissions
 	temp |= ((uint8_t) CAN_MODE_E::Configuration) << 24;	// Request config mode
 	Write_Word_Blocking(ADDR_E::C1CON, temp);
-	
+
 	// Wait for config mode
 	do {
 		temp = Receive_Word_Blocking(ADDR_E::C1CON);
 	} while ((temp & (0b111 << 21)) != (0b100 << 21));
-	
+
 	fifoTimestamp = 0;
 	for (uint8_t i = 0; i < 32; i++){
 		// Configure filters
@@ -127,7 +127,7 @@ void MCP2517_C::Init(const CAN_Config_t canConfig){
 			FIFO_Init(FIFO_Settings[i], i);
 		}
 	}
-	
+
 	// Configure interrupts
 	temp = 0;
 	temp |= (canConfig.enableIntInvalidMessage ? 1 : 0) << 31;
@@ -144,35 +144,35 @@ void MCP2517_C::Init(const CAN_Config_t canConfig){
 	temp |= (canConfig.enableIntRxFifo ? 1 : 0) << 17;
 	temp |= (canConfig.enableIntTxFifo ? 1 : 0) << 16;
 	Write_Word_Blocking(ADDR_E::C1INT, temp);
-	
+
 	temp = 0;
 	temp |= (canConfig.enableEdgeFilter ? 1 : 0) << 25;
 	temp |= (canConfig.enableSID11 ? 1 : 0) << 24;
 	temp |= ((uint8_t) canConfig.txDelayCompensation) << 16;
 	temp |= (canConfig.txDelayCompOffset) << 8;
 	Write_Word_Blocking(ADDR_E::C1TDC, temp);
-	
+
 	temp = 0;
-	temp |= canConfig.nominalBaudPrescaler << 24;	
-	temp |= canConfig.nominalTSEG1 << 16;	
-	temp |= canConfig.nominalTSEG2 << 8;	
-	temp |= canConfig.nominalSyncJump;		
+	temp |= canConfig.nominalBaudPrescaler << 24;
+	temp |= canConfig.nominalTSEG1 << 16;
+	temp |= canConfig.nominalTSEG2 << 8;
+	temp |= canConfig.nominalSyncJump;
 	Write_Word_Blocking(ADDR_E::C1NBTCFG, temp);
-	
+
 	temp = 0;
-	temp |= canConfig.dataBaudPrescaler << 24;	
-	temp |= canConfig.dataTSEG1 << 16;	
-	temp |= canConfig.dataTSEG2 << 8;		
-	temp |= canConfig.dataSyncJump;			
+	temp |= canConfig.dataBaudPrescaler << 24;
+	temp |= canConfig.dataTSEG1 << 16;
+	temp |= canConfig.dataTSEG2 << 8;
+	temp |= canConfig.dataSyncJump;
 	Write_Word_Blocking(ADDR_E::C1DBTCFG, temp);
-	
+
 	temp = 0;
 	temp |= ((uint8_t) canConfig.clkOutDiv) << 5;
 	temp |= (canConfig.sysClkDiv ? 1 : 0) << 4;
 	temp |= (canConfig.clkDisable ? 1 : 0) << 2;
 	temp |= (canConfig.pllEnable ? 1 : 0);
 	Write_Word_Blocking(ADDR_E::OSC, temp);
-	
+
 	temp = 0;
 	temp |= ((uint8_t) canConfig.txBandwidthShare) << 28;
 	temp |= ((uint8_t) canConfig.opMode) << 24;
@@ -187,19 +187,19 @@ void MCP2517_C::Init(const CAN_Config_t canConfig){
 	temp |= (canConfig.enableIsoCrc ? 1 : 0) << 5;
 	temp |= canConfig.deviceNetFilterBits;
 	Write_Word_Blocking(ADDR_E::C1CON, temp);
-	
+
 	// Wait for chosen mode
 	do {
 		temp = Receive_Word_Blocking(ADDR_E::C1CON);
 	} while ((temp & (0b111 << 21)) != (((uint8_t) canConfig.opMode) << 21));
-	
+
 }
 
 void MCP2517_C::Reconfigure_Filter(CAN_Filter_t* filterSetting, uint8_t filterNum){
 	// Disable filter so it can be edited
 	filterSetting->enabled = 0;
 	Filter_Init(filterSetting, filterNum);
-	
+
 	// Configure and enable filter
 	filterSetting->enabled = 1;
 	Filter_Init(filterSetting, filterNum);
@@ -223,14 +223,14 @@ uint8_t MCP2517_C::Send_Buffer(enum ADDR_E addr, char* data, uint8_t length){
 		// Write buffer
 		msgBuff[0] = ((char) MCP2517_INSTR_E::Write << 4) | ((uint16_t) addr >> 8);
 		msgBuff[1] = (uint8_t) addr & 0xff;
-		
+
 		for (uint8_t i = 0; i < length; i++){
 			msgBuff[i+2] = data[i];
 		}
-		
+
 		Set_SS(1);
 		com->Transfer(msgBuff, length+2, Tx);
-		
+
 		// Return success
 		return 1;
 	} else {
@@ -244,7 +244,7 @@ uint8_t MCP2517_C::Send_Buffer(enum ADDR_E addr, char* data, uint8_t length){
 void MCP2517_C::Send_Buffer(enum ADDR_E addr, uint8_t length){
 	msgBuff[0] = ((char) MCP2517_INSTR_E::Write << 4) | ((uint16_t) addr >> 8);
 	msgBuff[1] = ((uint16_t) addr) & 0xff;
-	
+
 	Set_SS(1);
 	com->Transfer(msgBuff, length+2, Tx);
 }
@@ -256,10 +256,10 @@ uint8_t MCP2517_C::Receive_Buffer(enum ADDR_E addr, uint8_t length){
 		// Write buffer
 		msgBuff[0] = ((char) MCP2517_INSTR_E::Read << 4) | ((uint16_t) addr >> 8);
 		msgBuff[1] = (uint8_t) addr & 0xff;
-		
+
 		Set_SS(1);
 		com->Transfer(msgBuff, length+2, RxTx);
-		
+
 		return 1;
 	} else {
 		return 0;
@@ -300,9 +300,9 @@ uint32_t MCP2517_C::Receive_Word_Blocking(enum ADDR_E addr){
 
 void MCP2517_C::FIFO_Increment(uint8_t fifoNum, uint8_t txRequest){
 	uint16_t addr = Get_FIFOCON_Addr(fifoNum) + 1;
-	
+
 	char data = 1 | (txRequest << 1);
-	
+
 	Send_Buffer((ADDR_E) addr, &data, 1);
 }
 
@@ -324,10 +324,10 @@ uint8_t MCP2517_C::Write_Message(CAN_Tx_msg_t* msg, uint8_t fifoNum){
 	if (msgState == Msg_Idle){
 		payloadLength = Get_Data_Length(msg->dataLengthCode);
 		msgAddr = msg->id & 0xffff;
-		
+
 		msgBuff[4] = msg->id >> 16;
 		msgBuff[5] = msg->id >> 24;
-		
+
 		uint8_t temp = 0;
 		temp |= msg->dataLengthCode;
 		temp |= (msg->extendedID ? 1 : 0) << 4;
@@ -336,7 +336,7 @@ uint8_t MCP2517_C::Write_Message(CAN_Tx_msg_t* msg, uint8_t fifoNum){
 		temp |= (msg->canFDFrame ? 1 : 0) << 7;
 		msgBuff[6] = temp;
 		txHeadTemp = temp;
-		
+
 		temp = 0;
 		temp |= (msg->errorIndicator ? 1 : 0);
 		temp |= msg->sequence << 1;
@@ -344,13 +344,13 @@ uint8_t MCP2517_C::Write_Message(CAN_Tx_msg_t* msg, uint8_t fifoNum){
 		msgBuff[8] = 0;
 		msgBuff[9] = 0;
 		txHeadTemp |= temp << 8;
-		
+
 		for (uint8_t i = 0; i < payloadLength; i++){
 			msgBuff[i+10] = msg->payload[i];
 		}
-		
+
 		currentFifo = fifoNum;
-		
+
 		sendFifo = 0;
 		msgAppended = 0;
 		msgState = Msg_Tx_Addr;
@@ -452,7 +452,7 @@ void MCP2517_C::com_cb(){
 			// Rx RAM address fetched, start fetching header
 			Set_SS(0);
 			msgState = Msg_Rx_Header;
-			
+
 			uint16_t addr = (msgBuff[3] << 8) | msgBuff[2];
 			addr += (uint16_t) ADDR_E::RAM_START;
 			msgAddr = addr;
@@ -463,7 +463,7 @@ void MCP2517_C::com_cb(){
 		if (com->Get_Status() == Idle){
 			Set_SS(0);
 			CAN_Rx_msg_t tempMsg;
-			
+
 			tempMsg.id = msgBuff[2] | (msgBuff[3] << 8) | (msgBuff[4] << 16) | (msgBuff[5] << 24);
 			tempMsg.dataLengthCode = msgBuff[6] & 0x0f;
 			tempMsg.extendedID = (msgBuff[6] & 0x10) ? 1 : 0;
@@ -472,9 +472,9 @@ void MCP2517_C::com_cb(){
 			tempMsg.canFDFrame = (msgBuff[6] & 0x80) ? 1 : 0;
 			tempMsg.errorStatus = (msgBuff[7] & 0x01) ? 1 : 0;
 			tempMsg.filterHit = msgBuff[7] >> 3;
-			
+
 			payloadLength = Get_Data_Length(tempMsg.dataLengthCode);
-			
+
 			if (fifoTimestamp & (1 << currentFifo)){
 				tempMsg.timeStamp = msgBuff[10] | (msgBuff[11] << 8) | (msgBuff[12] << 16) | (msgBuff[13] << 24);
 				tempMsg.payload = &msgBuff[14];
@@ -496,7 +496,7 @@ void MCP2517_C::com_cb(){
 		case Msg_Rx_Data:
 		if (com->Get_Status() == Idle){
 			Set_SS(0);
-			
+
 			if (payloadLength > 32){
 				payloadLength -= 32;
 				msgAddr += 32;
@@ -522,7 +522,7 @@ void MCP2517_C::com_cb(){
 			// Tx RAM address was fetched, send data
 			Set_SS(0);
 			msgState = Msg_Tx_Data;
-			
+
 			// Swap buffer address and message ID
 			uint16_t addr = (msgBuff[3] << 8) | msgBuff[2];
 			addr += (uint16_t) ADDR_E::RAM_START;

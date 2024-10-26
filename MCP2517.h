@@ -3,7 +3,7 @@
  *
  * Created: 01/07/2021 17:36:38
  *  Author: GuavTek
- */ 
+ */
 
 
 #ifndef MCP2517_H_
@@ -129,9 +129,9 @@ enum class CAN_MODE_E {
 };
 
 struct CAN_Config_t {
-	enum {	clkOutDiv1 = 0b00, 
-			clkOutDiv2 = 0b01, 
-			clkOutDiv4 = 0b10, 
+	enum {	clkOutDiv1 = 0b00,
+			clkOutDiv2 = 0b01,
+			clkOutDiv4 = 0b10,
 			clkOutDiv10 = 0b11} clkOutDiv = clkOutDiv1;
 	bool sysClkDiv = false;
 	bool clkDisable = false;
@@ -370,9 +370,9 @@ class MCP2517_C : public com_driver_c {
 		uint8_t msgAppended : 1;	// Has the payload been appended?
 		uint8_t currentFifo : 5;	// The current fifo being accessed
 		uint8_t payloadLength;	// The length of the payload
-		char msgBuff[34];		// The internal buffer
+		char msgBuff[74];		// The internal buffer
 		enum {Msg_Idle = 0,
-			Msg_Rx_Flags, Msg_FIFO_Int, Msg_Status, 
+			Msg_Rx_Flags, Msg_FIFO_Int, Msg_Status,
 			Msg_Rx_Addr, Msg_Rx_Header, Msg_Rx_Data, Msg_Rx_FIFO,
 			Msg_Tx_Addr, Msg_Tx_Data, Msg_Tx_Idle, Msg_Tx_FIFO} msgState;	// The controller state
 };
@@ -387,13 +387,13 @@ inline void MCP2517_C::Filter_Init(const CAN_Filter_t* setting, uint8_t filterNu
 	temp |= (setting->matchBothIDTypes ? 0 : 1) << 30;
 	temp |= setting->maskID << 0;				// set Mask (SID11, EID, SID10-0)
 	Write_Word_Blocking(ADDR_E(uint16_t(ADDR_E::C1MASK0) + 8 * filterNum), temp);
-	
+
 	// Set ID
 	temp = 0;
 	temp |= (setting->extendedID ? 1 : 0) << 30;
 	temp |= setting->ID << 0;					// set ID (SID11, EID, SID10-0)
 	Write_Word_Blocking(ADDR_E(uint16_t(ADDR_E::C1FLTOBJ0) + 8 * filterNum), temp);
-	
+
 	// Enable filter and set destination
 	temp = Receive_Word_Blocking(ADDR_E(uint16_t(ADDR_E::C1FLTCON0) + 4*(filterNum >> 2)));
 	if (setting->enabled){
@@ -407,7 +407,7 @@ inline void MCP2517_C::Filter_Init(const CAN_Filter_t* setting, uint8_t filterNu
 
 inline void MCP2517_C::FIFO_Init(const CAN_FIFO_t* setting, uint8_t fifoNum){
 	uint32_t temp = 0;
-	
+
 	// Find required DLC size
 	uint8_t tempDLC;
 	if (setting->payloadSize > 48){
@@ -430,7 +430,7 @@ inline void MCP2517_C::FIFO_Init(const CAN_FIFO_t* setting, uint8_t fifoNum){
 
 	fifoTimestamp &= ~(1 << fifoNum);
 	fifoTimestamp |= (setting->receiveTimestamp ? 1 : 0) << fifoNum;
-	
+
 	temp |= tempDLC << 29;
 	temp |= setting->fifoDepth << 24;
 	temp |= setting->retransmitAttempt << 21;
@@ -447,46 +447,29 @@ inline void MCP2517_C::FIFO_Init(const CAN_FIFO_t* setting, uint8_t fifoNum){
 }
 
 inline uint8_t MCP2517_C::Get_DLC(uint8_t dataLength){
-	switch(dataLength){
-		case 0:
-			return 0;
-		case 1:
-			return 1;
-		case 2:
-			return 2;
-		case 3:
-			return 3;
-		case 4:
-			return 4;
-		case 5:
-			return 5;
-		case 6:
-			return 6;
-		case 7:
-			return 7;
-		case 8:
-			return 8;
-		case 12:
-			return 9;
-		case 16:
-			return 10;
-		case 20:
-			return 11;
-		case 24:
-			return 12;
-		case 32:
-			return 13;
-		case 48:
-			return 14;
-		case 64:
-			return 15;
-		default:
-			return 255;
+	if (dataLength > 48){
+		return 15;
+	} else if (dataLength > 32){
+		return 14;
+	} else if (dataLength > 24){
+		return 13;
+	} else if (dataLength > 20){
+		return 12;
+	} else if (dataLength > 16){
+		return 11;
+	} else if (dataLength > 12){
+		return 10;
+	} else if (dataLength > 8){
+		return 9;
+	} else {
+		return dataLength;
 	}
 }
 
 inline uint8_t MCP2517_C::Get_Data_Length(uint8_t DLC){
 	switch(DLC){
+		case 0:
+			return 0;
 		case 1:
 			return 1;
 		case 2:
